@@ -1,0 +1,10 @@
+{
+  "id": "chronicle",
+  "name": "Chronicle",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Tasks and calendar events inspired by Apple Calendar and Reminders",
+  "author": "Operator-X9",
+  "authorUrl": "https://github.com/Operator-X9/Chronicle",
+  "isDesktopOnly": false
+}

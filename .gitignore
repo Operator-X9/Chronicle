@@ -1,0 +1,7 @@
+node_modules/
+main.js
+*.js.map
+CORE Obsidian Vault Testing/
+*.pdf
+.DS_Store
+dist/
