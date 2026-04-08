@@ -2,22 +2,28 @@ import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
 import { ChronicleTask, ChronicleCalendar } from "../types";
 import { TaskManager } from "../data/TaskManager";
 import { CalendarManager } from "../data/CalendarManager";
+import { TaskFormView, TASK_FORM_VIEW_TYPE } from "./TaskFormView";
+import { EventModal } from "../ui/EventModal";
+import { EventManager } from "../data/EventManager";
 
 export const TASK_VIEW_TYPE = "chronicle-task-view";
 
 export class TaskView extends ItemView {
-  private taskManager: TaskManager;
+   private taskManager: TaskManager;
   private calendarManager: CalendarManager;
+  private eventManager: EventManager;
   private currentListId: string = "today";
 
   constructor(
     leaf: WorkspaceLeaf,
     taskManager: TaskManager,
-    calendarManager: CalendarManager
+    calendarManager: CalendarManager,
+    eventManager: EventManager
   ) {
     super(leaf);
     this.taskManager = taskManager;
     this.calendarManager = calendarManager;
+    this.eventManager = eventManager;
   }
 
   getViewType(): string { return TASK_VIEW_TYPE; }
@@ -43,6 +49,9 @@ export class TaskView extends ItemView {
     const main    = layout.createDiv("chronicle-main");
 
     // ── Smart list tiles ──────────────────────────────────────────────────
+    const newTaskBtn = sidebar.createEl("button", { cls: "chronicle-new-task-btn", text: "New task" });
+    newTaskBtn.addEventListener("click", () => this.openTaskForm());
+
     const tilesGrid = sidebar.createDiv("chronicle-tiles");
 
     const tiles = [
@@ -98,7 +107,7 @@ export class TaskView extends ItemView {
     all: ChronicleTask[],
     overdue: ChronicleTask[]
   ) {
-    const header = main.createDiv("chronicle-main-header");
+   const header = main.createDiv("chronicle-main-header");
     const titleEl = header.createDiv("chronicle-main-title");
 
     let tasks: ChronicleTask[] = [];
@@ -152,39 +161,13 @@ export class TaskView extends ItemView {
       for (const [group, groupTasks] of Object.entries(groups)) {
         if (groupTasks.length === 0) continue;
         listEl.createDiv("chronicle-group-label").setText(group);
+        const card = listEl.createDiv("chronicle-task-card-group");
         for (const task of groupTasks) {
-          this.renderTaskRow(listEl, task);
+          this.renderTaskRow(card, task);
         }
       }
     }
-
-    // Inline new task entry
-    const newRow = listEl.createDiv("chronicle-new-task-row");
-    const plusIcon = newRow.createDiv("chronicle-new-task-plus");
-    plusIcon.setText("+");
-    const newInput = newRow.createEl("input", {
-      type: "text",
-      placeholder: "New reminder...",
-      cls: "chronicle-new-task-input"
-    });
-
-    newInput.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter" && newInput.value.trim()) {
-        const calendarId = smartColors[this.currentListId]
-          ? undefined
-          : this.currentListId;
-        await this.taskManager.create({
-          title: newInput.value.trim(),
-          status: "todo",
-          priority: this.currentListId === "flagged" ? "high" : "none",
-          calendarId,
-          tags: [], contexts: [], linkedNotes: [], projects: [],
-          timeEntries: [], customFields: [], completedInstances: [],
-        });
-        await this.render();
-      }
-      if (e.key === "Escape") newInput.blur();
-    });
+    
   }
 
   private renderEmptyState(container: HTMLElement) {
@@ -323,5 +306,20 @@ export class TaskView extends ItemView {
     return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
       month: "short", day: "numeric"
     });
+  }
+
+  async openTaskForm(task?: ChronicleTask) {
+    const { workspace } = this.app;
+    const existing = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
+    if (existing) existing.detach();
+    const leaf = workspace.getLeaf("tab");
+    await leaf.setViewState({ type: TASK_FORM_VIEW_TYPE, active: true });
+    workspace.revealLeaf(leaf);
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const formLeaf = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
+    if (formLeaf?.view instanceof TaskFormView) {
+      (formLeaf.view as TaskFormView).onSave = () => this.render();
+    }
   }
 }
