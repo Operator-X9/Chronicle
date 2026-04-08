@@ -9,7 +9,7 @@ export class TaskFormView extends ItemView {
   private taskManager: TaskManager;
   private calendarManager: CalendarManager;
   private editingTask: ChronicleTask | null = null;
-  private onSave?: () => void;
+  onSave?: () => void;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -30,6 +30,11 @@ export class TaskFormView extends ItemView {
   getIcon(): string { return "check-circle"; }
 
   async onOpen() { this.render(); }
+
+  loadTask(task: ChronicleTask) {
+    this.editingTask = task;
+    this.render();
+  }
 
   render() {
     const container = this.containerEl.children[1] as HTMLElement;

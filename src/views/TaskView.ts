@@ -1,15 +1,14 @@
-import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
-import { ChronicleTask, ChronicleCalendar } from "../types";
+import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ChronicleTask } from "../types";
 import { TaskManager } from "../data/TaskManager";
 import { CalendarManager } from "../data/CalendarManager";
 import { TaskFormView, TASK_FORM_VIEW_TYPE } from "./TaskFormView";
-import { EventModal } from "../ui/EventModal";
 import { EventManager } from "../data/EventManager";
 
 export const TASK_VIEW_TYPE = "chronicle-task-view";
 
 export class TaskView extends ItemView {
-   private taskManager: TaskManager;
+  private taskManager: TaskManager;
   private calendarManager: CalendarManager;
   private eventManager: EventManager;
   private currentListId: string = "today";
@@ -30,28 +29,58 @@ export class TaskView extends ItemView {
   getDisplayText(): string { return "Chronicle"; }
   getIcon(): string { return "check-circle"; }
 
-  async onOpen() { await this.render(); }
+async onOpen() {
+    await this.render();
+
+    // Auto-refresh whenever any file in the vault changes
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (file) => {
+        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+          this.render();
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on("create", (file) => {
+        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+          setTimeout(() => this.render(), 200);
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on("delete", (file) => {
+        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+          this.render();
+        }
+      })
+    );
+  }
 
   async render() {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass("chronicle-app");
 
-    const all      = await this.taskManager.getAll();
-    const today    = await this.taskManager.getDueToday();
+    const all       = await this.taskManager.getAll();
+    const today     = await this.taskManager.getDueToday();
     const scheduled = await this.taskManager.getScheduled();
-    const flagged  = await this.taskManager.getFlagged();
-    const overdue  = await this.taskManager.getOverdue();
+    const flagged   = await this.taskManager.getFlagged();
+    const overdue   = await this.taskManager.getOverdue();
     const calendars = this.calendarManager.getAll();
 
     const layout  = container.createDiv("chronicle-layout");
     const sidebar = layout.createDiv("chronicle-sidebar");
     const main    = layout.createDiv("chronicle-main");
 
-    // ── Smart list tiles ──────────────────────────────────────────────────
-    const newTaskBtn = sidebar.createEl("button", { cls: "chronicle-new-task-btn", text: "New task" });
+    // ── New task button ───────────────────────────────────────────────────
+    const newTaskBtn = sidebar.createEl("button", {
+      cls: "chronicle-new-task-btn", text: "New task"
+    });
     newTaskBtn.addEventListener("click", () => this.openTaskForm());
 
+    // ── Smart list tiles ──────────────────────────────────────────────────
     const tilesGrid = sidebar.createDiv("chronicle-tiles");
 
     const tiles = [
@@ -107,7 +136,7 @@ export class TaskView extends ItemView {
     all: ChronicleTask[],
     overdue: ChronicleTask[]
   ) {
-   const header = main.createDiv("chronicle-main-header");
+    const header  = main.createDiv("chronicle-main-header");
     const titleEl = header.createDiv("chronicle-main-title");
 
     let tasks: ChronicleTask[] = [];
@@ -140,11 +169,14 @@ export class TaskView extends ItemView {
     } else {
       const cal = this.calendarManager.getById(this.currentListId);
       titleEl.setText(cal?.name ?? "List");
-      titleEl.style.color = cal ? CalendarManager.colorToHex(cal.color) : "var(--text-normal)";
-      tasks = all.filter(t => t.calendarId === this.currentListId && t.status !== "done");
+      titleEl.style.color = cal
+        ? CalendarManager.colorToHex(cal.color)
+        : "var(--text-normal)";
+      tasks = all.filter(
+        t => t.calendarId === this.currentListId && t.status !== "done"
+      );
     }
 
-    // Task count subtitle
     const activeTasks = tasks.filter(t => t.status !== "done");
     if (activeTasks.length > 0) {
       header.createDiv("chronicle-main-subtitle").setText(
@@ -167,29 +199,25 @@ export class TaskView extends ItemView {
         }
       }
     }
-    
   }
 
   private renderEmptyState(container: HTMLElement) {
     const empty = container.createDiv("chronicle-empty-state");
-    const icon = empty.createDiv("chronicle-empty-icon");
+    const icon  = empty.createDiv("chronicle-empty-icon");
     icon.innerHTML = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
     empty.createDiv("chronicle-empty-title").setText("All done");
     empty.createDiv("chronicle-empty-subtitle").setText("Nothing left in this list.");
   }
 
   private renderTaskRow(container: HTMLElement, task: ChronicleTask) {
-    const row = container.createDiv("chronicle-task-row");
+    const row    = container.createDiv("chronicle-task-row");
     const isDone = task.status === "done";
 
     // Checkbox
     const checkboxWrap = row.createDiv("chronicle-checkbox-wrap");
-    const checkbox = checkboxWrap.createDiv("chronicle-checkbox");
+    const checkbox     = checkboxWrap.createDiv("chronicle-checkbox");
     if (isDone) checkbox.addClass("done");
-
-    // Checkmark SVG inside checkbox
-    const checkSvg = `<svg class="chronicle-checkmark" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-    checkbox.innerHTML = checkSvg;
+    checkbox.innerHTML = `<svg class="chronicle-checkmark" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 
     checkbox.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -197,30 +225,30 @@ export class TaskView extends ItemView {
       setTimeout(async () => {
         await this.taskManager.update({
           ...task,
-          status: isDone ? "todo" : "done",
+          status:      isDone ? "todo" : "done",
           completedAt: isDone ? undefined : new Date().toISOString(),
         });
         await this.render();
       }, 300);
     });
 
-    // Content — clicking opens the note
+    // Content — click to edit
     const content = row.createDiv("chronicle-task-content");
-    content.addEventListener("click", () => this.openTaskNote(task));
+    content.addEventListener("click", () => this.openTaskForm(task));
 
     const titleEl = content.createDiv("chronicle-task-title");
     titleEl.setText(task.title);
     if (isDone) titleEl.addClass("done");
 
     // Meta
-    const today = new Date().toISOString().split("T")[0];
+    const todayStr = new Date().toISOString().split("T")[0];
     if (task.dueDate || task.calendarId) {
       const meta = content.createDiv("chronicle-task-meta");
 
       if (task.dueDate) {
         const metaDate = meta.createSpan("chronicle-task-date");
         metaDate.setText(this.formatDate(task.dueDate));
-        if (task.dueDate < today) metaDate.addClass("overdue");
+        if (task.dueDate < todayStr) metaDate.addClass("overdue");
       }
 
       if (task.calendarId) {
@@ -235,17 +263,23 @@ export class TaskView extends ItemView {
 
     // Priority flag
     if (task.priority === "high") {
-      const flag = row.createDiv("chronicle-flag");
-      flag.setText("⚑");
+      row.createDiv("chronicle-flag").setText("⚑");
     }
 
-    // Right-click to delete
+    // Right-click context menu
     row.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       const menu = document.createElement("div");
       menu.className = "chronicle-context-menu";
       menu.style.left = `${e.clientX}px`;
       menu.style.top  = `${e.clientY}px`;
+
+      const editItem = menu.createDiv("chronicle-context-item");
+      editItem.setText("Edit task");
+      editItem.addEventListener("click", () => {
+        menu.remove();
+        this.openTaskForm(task);
+      });
 
       const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
       deleteItem.setText("Delete task");
@@ -264,18 +298,8 @@ export class TaskView extends ItemView {
     });
   }
 
-  private async openTaskNote(task: ChronicleTask) {
-    const folder = this.taskManager["tasksFolder"] as string;
-    const path = `${folder}/${task.title}.md`;
-    const file = this.app.vault.getFileByPath(path);
-    if (file instanceof TFile) {
-      const leaf = this.app.workspace.getLeaf("tab");
-      await leaf.openFile(file);
-    }
-  }
-
   private groupTasks(tasks: ChronicleTask[]): Record<string, ChronicleTask[]> {
-    const today   = new Date().toISOString().split("T")[0];
+    const today    = new Date().toISOString().split("T")[0];
     const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
 
     const groups: Record<string, ChronicleTask[]> = {
@@ -288,10 +312,10 @@ export class TaskView extends ItemView {
 
     for (const task of tasks) {
       if (task.status === "done") continue;
-      if (!task.dueDate)           { groups["No date"].push(task);   continue; }
-      if (task.dueDate < today)    { groups["Overdue"].push(task);   continue; }
-      if (task.dueDate === today)  { groups["Today"].push(task);     continue; }
-      if (task.dueDate <= nextWeek){ groups["This week"].push(task); continue; }
+      if (!task.dueDate)            { groups["No date"].push(task);   continue; }
+      if (task.dueDate < today)     { groups["Overdue"].push(task);   continue; }
+      if (task.dueDate === today)   { groups["Today"].push(task);     continue; }
+      if (task.dueDate <= nextWeek) { groups["This week"].push(task); continue; }
       groups["Later"].push(task);
     }
 
@@ -316,10 +340,9 @@ export class TaskView extends ItemView {
     await leaf.setViewState({ type: TASK_FORM_VIEW_TYPE, active: true });
     workspace.revealLeaf(leaf);
 
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 100));
     const formLeaf = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
-    if (formLeaf?.view instanceof TaskFormView) {
-      (formLeaf.view as TaskFormView).onSave = () => this.render();
-    }
+    const formView = formLeaf?.view as TaskFormView | undefined;
+    if (formView && task) formView.loadTask(task);
   }
 }
