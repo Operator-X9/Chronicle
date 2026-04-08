@@ -160,7 +160,17 @@ export class EventModal extends Modal {
     // ── Footer ───────────────────────────────────────────────────────────────
     const footer = contentEl.createDiv("cem-footer");
     const cancelBtn = footer.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
-    const saveBtn   = footer.createEl("button", { cls: "cf-btn-primary", text: e ? "Save" : "Add event" });
+
+    if (e && e.id) {
+      const deleteBtn = footer.createEl("button", { cls: "cf-btn-delete", text: "Delete event" });
+      deleteBtn.addEventListener("click", async () => {
+        await this.eventManager.delete(e.id);
+        this.onSave?.();
+        this.close();
+      });
+    }
+
+    const saveBtn = footer.createEl("button", { cls: "cf-btn-primary", text: e && e.id ? "Save" : "Add event" });
 
     // ── Handlers ─────────────────────────────────────────────────────────────
     cancelBtn.addEventListener("click", () => this.close());
@@ -185,7 +195,7 @@ export class EventModal extends Modal {
         completedInstances: e?.completedInstances ?? [],
       };
 
-      if (e) {
+      if (e && e.id) {
         await this.eventManager.update({ ...e, ...eventData });
       } else {
         await this.eventManager.create(eventData);

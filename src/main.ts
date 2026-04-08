@@ -5,6 +5,7 @@ import { TaskManager } from "./data/TaskManager";
 import { EventManager } from "./data/EventManager";
 import { TaskView, TASK_VIEW_TYPE } from "./views/TaskView";
 import { TaskFormView, TASK_FORM_VIEW_TYPE } from "./views/TaskFormView";
+import { CalendarView, CALENDAR_VIEW_TYPE } from "./views/CalendarView";
 import { EventModal } from "./ui/EventModal";
 
 export default class ChroniclePlugin extends Plugin {
@@ -23,7 +24,6 @@ export default class ChroniclePlugin extends Plugin {
     this.taskManager  = new TaskManager(this.app, this.settings.tasksFolder);
     this.eventManager = new EventManager(this.app, this.settings.eventsFolder);
 
-    // Register views
     this.registerView(
       TASK_VIEW_TYPE,
       (leaf) => new TaskView(leaf, this.taskManager, this.calendarManager, this.eventManager)
@@ -32,24 +32,34 @@ export default class ChroniclePlugin extends Plugin {
       TASK_FORM_VIEW_TYPE,
       (leaf) => new TaskFormView(leaf, this.taskManager, this.calendarManager)
     );
+    this.registerView(
+      CALENDAR_VIEW_TYPE,
+      (leaf) => new CalendarView(leaf, this.eventManager, this.taskManager, this.calendarManager)
+    );
 
-    // Ribbon
-    this.addRibbonIcon("check-circle", "Chronicle", () => this.activateView());
+    // Ribbon — tasks (checklist icon)
+    this.addRibbonIcon("check-circle", "Chronicle Tasks", () => this.activateTaskView());
+
+    // Ribbon — calendar
+    this.addRibbonIcon("calendar", "Chronicle Calendar", () => this.activateCalendarView());
 
     // Commands
     this.addCommand({
       id: "open-chronicle",
-      name: "Open Chronicle",
-      callback: () => this.activateView(),
+      name: "Open task dashboard",
+      callback: () => this.activateTaskView(),
     });
-
+    this.addCommand({
+      id: "open-calendar",
+      name: "Open calendar",
+      callback: () => this.activateCalendarView(),
+    });
     this.addCommand({
       id: "new-task",
       name: "New task",
       hotkeys: [{ modifiers: ["Mod"], key: "n" }],
       callback: () => this.openTaskForm(),
     });
-
     this.addCommand({
       id: "new-event",
       name: "New event",
@@ -60,12 +70,22 @@ export default class ChroniclePlugin extends Plugin {
     console.log("Chronicle loaded ✓");
   }
 
-  async activateView() {
+  async activateTaskView() {
     const { workspace } = this.app;
     let leaf = workspace.getLeavesOfType(TASK_VIEW_TYPE)[0];
     if (!leaf) {
       leaf = workspace.getLeaf("tab");
       await leaf.setViewState({ type: TASK_VIEW_TYPE, active: true });
+    }
+    workspace.revealLeaf(leaf);
+  }
+
+  async activateCalendarView() {
+    const { workspace } = this.app;
+    let leaf = workspace.getLeavesOfType(CALENDAR_VIEW_TYPE)[0];
+    if (!leaf) {
+      leaf = workspace.getLeaf("tab");
+      await leaf.setViewState({ type: CALENDAR_VIEW_TYPE, active: true });
     }
     workspace.revealLeaf(leaf);
   }
@@ -77,33 +97,19 @@ export default class ChroniclePlugin extends Plugin {
     const leaf = workspace.getLeaf("tab");
     await leaf.setViewState({ type: TASK_FORM_VIEW_TYPE, active: true });
     workspace.revealLeaf(leaf);
-
-    // Pass refresh callback to the form
-    await new Promise(resolve => setTimeout(resolve, 50));
-    const formLeaf = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
-    if (formLeaf?.view instanceof TaskFormView) {
-      (formLeaf.view as TaskFormView).onSave = () => {
-        const dashLeaf = workspace.getLeavesOfType(TASK_VIEW_TYPE)[0];
-        if (dashLeaf?.view instanceof TaskView) {
-          (dashLeaf.view as TaskView).render();
-        }
-      };
-    }
   }
 
   openEventModal() {
     new EventModal(
-      this.app,
-      this.eventManager,
-      this.calendarManager,
-      undefined,
-      () => {}
+      this.app, this.eventManager, this.calendarManager,
+      undefined, () => {}
     ).open();
   }
 
   onunload() {
     this.app.workspace.detachLeavesOfType(TASK_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);
   }
 
   async loadSettings() {

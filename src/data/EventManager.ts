@@ -55,6 +55,97 @@ export class EventManager {
     return all.filter((e) => e.startDate >= startDate && e.startDate <= endDate);
   }
 
+// Expands recurring events into occurrences within a date range.
+  // Returns a flat list of ChronicleEvent objects, one per occurrence,
+  // each with startDate/endDate set to the occurrence date.
+  async getInRangeWithRecurrence(rangeStart: string, rangeEnd: string): Promise<ChronicleEvent[]> {
+    const all    = await this.getAll();
+    const result: ChronicleEvent[] = [];
+
+    for (const event of all) {
+      if (!event.recurrence) {
+        // Non-recurring — include if it falls in range
+        if (event.startDate >= rangeStart && event.startDate <= rangeEnd) {
+          result.push(event);
+        }
+        continue;
+      }
+
+      // Expand recurrence within range
+      const occurrences = this.expandRecurrence(event, rangeStart, rangeEnd);
+      result.push(...occurrences);
+    }
+
+    return result;
+  }
+
+  private expandRecurrence(event: ChronicleEvent, rangeStart: string, rangeEnd: string): ChronicleEvent[] {
+    const results: ChronicleEvent[] = [];
+    const rule = event.recurrence ?? "";
+
+    // Parse RRULE parts
+    const freq    = this.rrulePart(rule, "FREQ");
+    const byDay   = this.rrulePart(rule, "BYDAY");
+    const until   = this.rrulePart(rule, "UNTIL");
+    const countStr = this.rrulePart(rule, "COUNT");
+    const count   = countStr ? parseInt(countStr) : 999;
+
+    const start   = new Date(event.startDate + "T00:00:00");
+    const rEnd    = new Date(rangeEnd + "T00:00:00");
+    const rStart  = new Date(rangeStart + "T00:00:00");
+    const untilDate = until ? new Date(until.slice(0,8).replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3") + "T00:00:00") : null;
+
+    const dayNames = ["SU","MO","TU","WE","TH","FR","SA"];
+    const byDays   = byDay ? byDay.split(",") : [];
+
+    let current   = new Date(start);
+    let generated = 0;
+
+    while (current <= rEnd && generated < count) {
+      if (untilDate && current > untilDate) break;
+
+      const dateStr = current.toISOString().split("T")[0];
+
+      // Calculate duration to apply to each occurrence
+      const durationMs = new Date(event.endDate + "T00:00:00").getTime() - start.getTime();
+      const endDate    = new Date(current.getTime() + durationMs).toISOString().split("T")[0];
+
+      if (current >= rStart && !event.completedInstances.includes(dateStr)) {
+        results.push({ ...event, startDate: dateStr, endDate });
+        generated++;
+      }
+
+      // Advance to next occurrence
+      if (freq === "DAILY") {
+        current.setDate(current.getDate() + 1);
+      } else if (freq === "WEEKLY") {
+        if (byDays.length > 0) {
+          // Find next matching weekday
+          current.setDate(current.getDate() + 1);
+          let safety = 0;
+          while (!byDays.includes(dayNames[current.getDay()]) && safety++ < 7) {
+            current.setDate(current.getDate() + 1);
+          }
+        } else {
+          current.setDate(current.getDate() + 7);
+        }
+      } else if (freq === "MONTHLY") {
+        current.setMonth(current.getMonth() + 1);
+      } else if (freq === "YEARLY") {
+        current.setFullYear(current.getFullYear() + 1);
+      } else {
+        break; // Unknown freq — stop to avoid infinite loop
+      }
+    }
+
+    return results;
+  }
+
+  private rrulePart(rule: string, key: string): string {
+    const match = rule.match(new RegExp(`(?:^|;)${key}=([^;]+)`));
+    return match ? match[1] : "";
+  }
+
   private eventToMarkdown(event: ChronicleEvent): string {
     const fm: Record<string, unknown> = {
       id:                   event.id,
