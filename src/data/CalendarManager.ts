@@ -52,7 +52,11 @@ export class CalendarManager {
 
   // Returns CSS hex color for a CalendarColor name
   static colorToHex(color: CalendarColor): string {
-    const map: Record<CalendarColor, string> = {
+    // If already a hex value, return it directly
+    if (color.startsWith("#")) return color;
+
+    // Legacy named color map
+    const map: Record<string, string> = {
       blue:   "#378ADD",
       green:  "#34C759",
       purple: "#AF52DE",
@@ -63,7 +67,7 @@ export class CalendarManager {
       yellow: "#FFD60A",
       gray:   "#8E8E93",
     };
-    return map[color];
+    return map[color] ?? "#378ADD";
   }
 
   private generateId(name: string): string {

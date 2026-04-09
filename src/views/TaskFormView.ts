@@ -64,6 +64,12 @@ export class TaskFormView extends ItemView {
     titleInput.value = t?.title ?? "";
     titleInput.focus();
 
+    // Location
+    const locationInput = this.field(form, "Location").createEl("input", {
+      type: "text", cls: "cf-input", placeholder: "Add location"
+    });
+    locationInput.value = t?.location ?? "";
+
     // Status + Priority (side by side)
     const row1 = form.createDiv("cf-row");
 
@@ -108,25 +114,6 @@ export class TaskFormView extends ItemView {
     });
     dueTimeInput.value = t?.dueTime ?? "";
 
-    // Calendar
-    const calField = this.field(form, "Calendar");
-    const calSelect = calField.createEl("select", { cls: "cf-select" });
-    calSelect.createEl("option", { value: "", text: "None" });
-    for (const cal of calendars) {
-      const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
-      if (t?.calendarId === cal.id) opt.selected = true;
-    }
-
-    // Update calendar select dot color
-    const updateCalColor = () => {
-      const cal = this.calendarManager.getById(calSelect.value);
-      calSelect.style.borderLeftColor = cal ? CalendarManager.colorToHex(cal.color) : "transparent";
-      calSelect.style.borderLeftWidth = "4px";
-      calSelect.style.borderLeftStyle = "solid";
-    };
-    calSelect.addEventListener("change", updateCalColor);
-    updateCalColor();
-
     // Recurrence
     const recField = this.field(form, "Repeat");
     const recSelect = recField.createEl("select", { cls: "cf-select" });
@@ -142,82 +129,6 @@ export class TaskFormView extends ItemView {
       const opt = recSelect.createEl("option", { value: r.value, text: r.label });
       if (t?.recurrence === r.value) opt.selected = true;
     }
-
-    // Time estimate
-    const estimateField = this.field(form, "Time estimate");
-    const estimateWrap = estimateField.createDiv("cf-row");
-    const estimateInput = estimateWrap.createEl("input", {
-      type: "number", cls: "cf-input cf-input-sm", placeholder: "0"
-    });
-    estimateInput.value = t?.timeEstimate ? String(t.timeEstimate) : "";
-    estimateInput.min = "0";
-    estimateWrap.createSpan({ cls: "cf-unit", text: "minutes" });
-
-    // Tags
-    const tagsField = this.field(form, "Tags");
-    const tagsInput = tagsField.createEl("input", {
-      type: "text", cls: "cf-input",
-      placeholder: "work, personal, urgent  (comma separated)"
-    });
-    tagsInput.value = t?.tags.join(", ") ?? "";
-
-    // Contexts
-    const contextsField = this.field(form, "Contexts");
-    const contextsInput = contextsField.createEl("input", {
-      type: "text", cls: "cf-input",
-      placeholder: "@home, @work  (comma separated)"
-    });
-    contextsInput.value = t?.contexts.join(", ") ?? "";
-
-    // Linked notes
-    const linkedField = this.field(form, "Linked notes");
-    const linkedInput = linkedField.createEl("input", {
-      type: "text", cls: "cf-input",
-      placeholder: "Projects/Website, Journal/2024  (comma separated)"
-    });
-    linkedInput.value = t?.linkedNotes.join(", ") ?? "";
-
-    // Custom fields
-    const customSection = form.createDiv("cf-section");
-    customSection.createDiv("cf-section-label").setText("Custom fields");
-    const customList = customSection.createDiv("cf-custom-list");
-    const customFields: { key: string; value: string }[] = [
-      ...(t?.customFields.map(f => ({ key: f.key, value: String(f.value) })) ?? [])
-    ];
-
-    const renderCustomFields = () => {
-      customList.empty();
-      for (let i = 0; i < customFields.length; i++) {
-        const cf = customFields[i];
-        const cfRow = customList.createDiv("cf-custom-row");
-        const keyInput = cfRow.createEl("input", {
-          type: "text", cls: "cf-input cf-custom-key", placeholder: "Field name"
-        });
-        keyInput.value = cf.key;
-        keyInput.addEventListener("input", () => { customFields[i].key = keyInput.value; });
-
-        const valInput = cfRow.createEl("input", {
-          type: "text", cls: "cf-input cf-custom-val", placeholder: "Value"
-        });
-        valInput.value = cf.value;
-        valInput.addEventListener("input", () => { customFields[i].value = valInput.value; });
-
-        const removeBtn = cfRow.createEl("button", { cls: "cf-btn-icon", text: "×" });
-        removeBtn.addEventListener("click", () => {
-          customFields.splice(i, 1);
-          renderCustomFields();
-        });
-      }
-
-      const addCfBtn = customList.createEl("button", {
-        cls: "cf-btn-ghost cf-add-field", text: "+ Add field"
-      });
-      addCfBtn.addEventListener("click", () => {
-        customFields.push({ key: "", value: "" });
-        renderCustomFields();
-      });
-    };
-    renderCustomFields();
 
     // Alert
     const alertField  = this.field(form, "Alert");
@@ -239,6 +150,41 @@ export class TaskFormView extends ItemView {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if (t?.alert === a.value) opt.selected = true;
     }
+
+    // Calendar
+    const calField = this.field(form, "Calendar");
+    const calSelect = calField.createEl("select", { cls: "cf-select" });
+    calSelect.createEl("option", { value: "", text: "None" });
+    for (const cal of calendars) {
+      const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
+      if (t?.calendarId === cal.id) opt.selected = true;
+    }
+
+    // Update calendar select dot color
+    const updateCalColor = () => {
+      const cal = this.calendarManager.getById(calSelect.value);
+      calSelect.style.borderLeftColor = cal ? CalendarManager.colorToHex(cal.color) : "transparent";
+      calSelect.style.borderLeftWidth = "4px";
+      calSelect.style.borderLeftStyle = "solid";
+    };
+    calSelect.addEventListener("change", updateCalColor);
+    updateCalColor();
+
+    // Tags
+    const tagsField = this.field(form, "Tags");
+    const tagsInput = tagsField.createEl("input", {
+      type: "text", cls: "cf-input",
+      placeholder: "work, personal, urgent  (comma separated)"
+    });
+    tagsInput.value = t?.tags.join(", ") ?? "";
+
+    // Linked notes
+    const linkedField = this.field(form, "Linked notes");
+    const linkedInput = linkedField.createEl("input", {
+      type: "text", cls: "cf-input",
+      placeholder: "Projects/Website, Journal/2024  (comma separated)"
+    });
+    linkedInput.value = t?.linkedNotes.join(", ") ?? "";
 
     // Notes
     const notesField = this.field(form, "Notes");
@@ -272,20 +218,20 @@ export class TaskFormView extends ItemView {
 
       const taskData = {
         title,
+        location:    locationInput.value || undefined,
         status:        statusSelect.value as TaskStatus,
         priority:      prioritySelect.value as TaskPriority,
         dueDate:       dueDateInput.value || undefined,
         dueTime:       dueTimeInput.value || undefined,
         calendarId:    calSelect.value || undefined,
         recurrence:    recSelect.value || undefined,
-        timeEstimate:  estimateInput.value ? parseInt(estimateInput.value) : undefined,
         tags:          tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : [],
-        contexts:      contextsInput.value ? contextsInput.value.split(",").map(s => s.trim()).filter(Boolean) : [],
+        contexts:      [],
         linkedNotes:   linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : [],
         projects:      t?.projects ?? [],
         timeEntries:   t?.timeEntries ?? [],
         completedInstances: t?.completedInstances ?? [],
-        customFields:  customFields.filter(f => f.key).map(f => ({ key: f.key, value: f.value })),
+        customFields:  t?.customFields ?? [],
         alert:         alertSelect.value as AlertOffset,
         notes:         notesInput.value || undefined,
       };

@@ -1,5 +1,6 @@
-import { TaskModal } from "../ui/TaskModal";
 import { ItemView, WorkspaceLeaf } from "obsidian";
+import { TaskModal } from "../ui/TaskModal";
+import type ChroniclePlugin from "../main";
 import { ChronicleTask } from "../types";
 import { TaskManager } from "../data/TaskManager";
 import { CalendarManager } from "../data/CalendarManager";
@@ -12,18 +13,21 @@ export class TaskView extends ItemView {
   private taskManager: TaskManager;
   private calendarManager: CalendarManager;
   private eventManager: EventManager;
+  private plugin: ChroniclePlugin;
   private currentListId: string = "today";
 
   constructor(
     leaf: WorkspaceLeaf,
     taskManager: TaskManager,
     calendarManager: CalendarManager,
-    eventManager: EventManager
+    eventManager: EventManager,
+    plugin: ChroniclePlugin
   ) {
     super(leaf);
-    this.taskManager = taskManager;
+    this.taskManager    = taskManager;
     this.calendarManager = calendarManager;
-    this.eventManager = eventManager;
+    this.eventManager   = eventManager;
+    this.plugin         = plugin;
   }
 
   getViewType(): string { return TASK_VIEW_TYPE; }
@@ -192,7 +196,8 @@ export class TaskView extends ItemView {
 
     const isCompleted = this.currentListId === "completed";
     const countTasks  = isCompleted ? tasks : tasks.filter(t => t.status !== "done");
-    if (countTasks.length > 0) {
+    const showSubtitle = this.plugin.settings.showTaskCountSubtitle ?? true;
+    if (countTasks.length > 0 && showSubtitle) {
       const subtitle = header.createDiv("chronicle-main-subtitle");
       if (isCompleted) {
         const clearBtn = subtitle.createEl("button", {
@@ -408,7 +413,8 @@ export class TaskView extends ItemView {
       this.calendarManager,
       task,
       undefined,
-      (t) => this.openTaskFullPage(t)
+      (t) => this.openTaskFullPage(t),
+      this.plugin
     ).open();
   }
 

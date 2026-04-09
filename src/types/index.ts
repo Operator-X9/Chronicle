@@ -1,8 +1,6 @@
 // ─── Calendars ───────────────────────────────────────────────────────────────
 
-export type CalendarColor =
-  | "blue" | "green" | "purple" | "orange"
-  | "red" | "teal" | "pink" | "yellow" | "gray";
+export type CalendarColor = string;
 
 export interface ChronicleCalendar {
   id: string;
@@ -42,9 +40,9 @@ export interface ChronicleTask {
   
 
   // --- Organisation ---
+  location?: string;
   calendarId?: string;    // links to a ChronicleCalendar
   tags: string[];
-  contexts: string[];     // e.g. ["@home", "@work"]
   linkedNotes: string[];  // wikilink paths e.g. ["Projects/Website"]
   projects: string[];
 
@@ -87,6 +85,8 @@ export interface ChronicleEvent {
   calendarId?: string;    // links to a ChronicleCalendar
   alert: AlertOffset;
   notes?: string;         // body content of the note
+  linkedNotes?: string[];
+  tags?: string[];
 
   // --- Connections ---
   linkedTaskIds: string[];   // Chronicle task IDs
@@ -121,7 +121,27 @@ export interface ChronicleSettings {
   showTodayCount: boolean;
   showScheduledCount: boolean;
   showFlaggedCount: boolean;
+
+  // Notification channels
+  notifMacOS: boolean;
+  notifObsidian: boolean;
+  notifSound: boolean;
+  notifEvents: boolean;
+  notifTasks: boolean;
+
+  // Events
+  defaultEventDuration: number;
+
+  // Appearance
+  density: "compact" | "comfortable";
+  showCompletedCount: boolean;
+  showTaskCountSubtitle: boolean;
+
+  // Custom field templates
+  defaultCustomFields: { key: string; type: "text" | "number" | "date" | "checkbox" }[];
 }
+
+
 
 export const DEFAULT_SETTINGS: ChronicleSettings = {
   tasksFolder: "Chronicle/Tasks",
@@ -140,4 +160,14 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
   showTodayCount: true,
   showScheduledCount: true,
   showFlaggedCount: true,
+  notifMacOS: true,
+  notifObsidian: true,
+  notifSound: true,
+  notifEvents: true,
+  notifTasks: true,
+  defaultEventDuration: 60,
+  density: "comfortable",
+  showCompletedCount: true,
+  showTaskCountSubtitle: true,
+  defaultCustomFields: [],
 };

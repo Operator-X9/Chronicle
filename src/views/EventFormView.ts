@@ -124,22 +124,6 @@ export class EventFormView extends ItemView {
       if (e?.recurrence === r.value) opt.selected = true;
     }
 
-    // Calendar
-    const calSelect = this.field(form, "Calendar").createEl("select", { cls: "cf-select" });
-    calSelect.createEl("option", { value: "", text: "None" });
-    for (const cal of calendars) {
-      const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
-      if (e?.calendarId === cal.id) opt.selected = true;
-    }
-    const updateCalColor = () => {
-      const cal = this.calendarManager.getById(calSelect.value);
-      calSelect.style.borderLeftColor = cal ? CalendarManager.colorToHex(cal.color) : "transparent";
-      calSelect.style.borderLeftWidth = "4px";
-      calSelect.style.borderLeftStyle = "solid";
-    };
-    calSelect.addEventListener("change", updateCalColor);
-    updateCalColor();
-
     // Alert
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
     const alerts: { value: AlertOffset; label: string }[] = [
@@ -159,6 +143,36 @@ export class EventFormView extends ItemView {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if (e?.alert === a.value) opt.selected = true;
     }
+
+    // Calendar
+    const calSelect = this.field(form, "Calendar").createEl("select", { cls: "cf-select" });
+    calSelect.createEl("option", { value: "", text: "None" });
+    for (const cal of calendars) {
+      const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
+      if (e?.calendarId === cal.id) opt.selected = true;
+    }
+    const updateCalColor = () => {
+      const cal = this.calendarManager.getById(calSelect.value);
+      calSelect.style.borderLeftColor = cal ? CalendarManager.colorToHex(cal.color) : "transparent";
+      calSelect.style.borderLeftWidth = "4px";
+      calSelect.style.borderLeftStyle = "solid";
+    };
+    calSelect.addEventListener("change", updateCalColor);
+    updateCalColor();
+
+    // Tags
+    const tagsInput = this.field(form, "Tags").createEl("input", {
+      type: "text", cls: "cf-input",
+      placeholder: "work, personal  (comma separated)"
+    });
+    tagsInput.value = e?.tags?.join(", ") ?? "";
+
+    // Linked notes
+    const linkedInput = this.field(form, "Linked notes").createEl("input", {
+      type: "text", cls: "cf-input",
+      placeholder: "Projects/Website, Journal/2024  (comma separated)"
+    });
+    linkedInput.value = e?.linkedNotes?.join(", ") ?? "";
 
     // Notes
     const notesInput = this.field(form, "Notes").createEl("textarea", {
@@ -187,6 +201,8 @@ export class EventFormView extends ItemView {
         calendarId:  calSelect.value || undefined,
         alert:       alertSelect.value as AlertOffset,
         notes:       notesInput.value || undefined,
+        linkedNotes:   linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.linkedNotes ?? []),
+        tags:          tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.tags ?? []),
         linkedTaskIds:      e?.linkedTaskIds ?? [],
         completedInstances: e?.completedInstances ?? [],
       };

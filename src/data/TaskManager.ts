@@ -107,10 +107,10 @@ export class TaskManager {
     const fm: Record<string, unknown> = {
       id:                 task.id,
       title:              task.title,
+      "location":         task.location ?? null,
       status:             task.status,
       priority:           task.priority,
       tags:               task.tags,
-      contexts:           task.contexts,
       projects:           task.projects,
       "linked-notes":     task.linkedNotes,
       "calendar-id":      task.calendarId ?? null,
@@ -147,6 +147,7 @@ export class TaskManager {
       return {
         id:                 fm.id,
         title:              fm.title,
+        location:           fm.location ?? undefined,
         status:             (fm.status as TaskStatus) ?? "todo",
         priority:           (fm.priority as TaskPriority) ?? "none",
         dueDate:            fm["due-date"] ?? undefined,
@@ -155,7 +156,6 @@ export class TaskManager {
         alert:              (fm.alert as AlertOffset) ?? "none",
         calendarId:         fm["calendar-id"] ?? undefined,
         tags:               fm.tags ?? [],
-        contexts:           fm.contexts ?? [],
         linkedNotes:        fm["linked-notes"] ?? [],
         projects:           fm.projects ?? [],
         timeEstimate:       fm["time-estimate"] ?? undefined,

@@ -4,6 +4,7 @@ import { EventManager } from "./EventManager";
 import { AlertOffset } from "../types";
 
 export class AlertManager {
+  private getSettings: () => import("../types").ChronicleSettings;
   private app:          App;
   private taskManager:  TaskManager;
   private eventManager: EventManager;
@@ -15,10 +16,11 @@ export class AlertManager {
   private onChanged: ((file: TFile) => void) | null = null;
   private onCreate:  ((file: any)   => void) | null = null;
 
-  constructor(app: App, taskManager: TaskManager, eventManager: EventManager) {
+  constructor(app: App, taskManager: TaskManager, eventManager: EventManager, getSettings: () => import("../types").ChronicleSettings) {
     this.app          = app;
     this.taskManager  = taskManager;
     this.eventManager = eventManager;
+    this.getSettings  = getSettings;
   }
 
   start() {
@@ -78,6 +80,7 @@ export class AlertManager {
     const events = await this.eventManager.getAll();
     console.log(`[Chronicle] Checking ${events.length} events`);
 
+    if (!(this.getSettings().notifEvents ?? true)) return;
     for (const event of events) {
       if (!event.alert || event.alert === "none") continue;
       if (!event.startDate || !event.startTime)   continue;
@@ -123,11 +126,16 @@ export class AlertManager {
     }
   }
 
-  private fire(key: string, title: string, body: string, type: "event" | "task") {
+  public fire(key: string, title: string, body: string, type: "event" | "task") {
     this.firedAlerts.add(key);
+    const settings = this.getSettings();
+    const doMacOS    = settings.notifMacOS    ?? true;
+    const doObsidian = settings.notifObsidian ?? true;
+    const doSound    = settings.notifSound    ?? true;
     const icon = type === "event" ? "🗓" : "✓";
 
     // Native macOS notification — try multiple approaches
+    if (doMacOS) {
     let notifSent = false;
 
     // Approach 1: osascript (most reliable on macOS regardless of Electron version)
@@ -160,11 +168,16 @@ export class AlertManager {
       }
     }
 
-    // In-app toast — always works
-    new Notice(`${icon} ${title}\n${body}`, 8000);
+    // In-app toast
+    if (doObsidian) {
+      new Notice(`${icon} ${title}\n${body}`, 8000);
+    }
 
     // Sound
-    this.playSound();
+    if (doSound) {
+      this.playSound();
+    }
+    }
   }
 
   private playSound() {

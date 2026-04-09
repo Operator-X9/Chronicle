@@ -31,80 +31,83 @@ export class EventModal extends Modal {
     contentEl.empty();
     contentEl.addClass("chronicle-event-modal");
 
-    const e = this.editingEvent;
+    const e         = this.editingEvent;
     const calendars = this.calendarManager.getAll();
 
-    // ── Header ──────────────────────────────────────────────────────────────
+    // ── Header ──────────────────────────────────────────────────────────
     const header = contentEl.createDiv("cem-header");
-    header.createDiv("cem-title").setText(e ? "Edit event" : "New event");
+    header.createDiv("cem-title").setText(e && e.id ? "Edit event" : "New event");
 
     const expandBtn = header.createEl("button", { cls: "cf-btn-ghost cem-expand-btn" });
     expandBtn.title = "Open as full page";
     expandBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    expandBtn.addEventListener("click", () => {
+      this.close();
+      this.onExpand?.(e ?? undefined);
+    });
 
-    // ── Form ────────────────────────────────────────────────────────────────
+    // ── Scrollable form ──────────────────────────────────────────────────
     const form = contentEl.createDiv("cem-form");
 
     // Title
-    const titleInput = this.cemField(form, "Title").createEl("input", {
+    const titleInput = this.field(form, "Title").createEl("input", {
       type: "text", cls: "cf-input cf-title-input", placeholder: "Event name"
     });
     titleInput.value = e?.title ?? "";
     titleInput.focus();
 
     // Location
-    const locationInput = this.cemField(form, "Location").createEl("input", {
+    const locationInput = this.field(form, "Location").createEl("input", {
       type: "text", cls: "cf-input", placeholder: "Add location"
     });
     locationInput.value = e?.location ?? "";
 
     // All day toggle
-    const allDayField = this.cemField(form, "All day");
-    const allDayWrap = allDayField.createDiv("cem-toggle-wrap");
+    const allDayField  = this.field(form, "All day");
+    const allDayWrap   = allDayField.createDiv("cem-toggle-wrap");
     const allDayToggle = allDayWrap.createEl("input", { type: "checkbox", cls: "cem-toggle" });
     allDayToggle.checked = e?.allDay ?? false;
-    const allDayLabel = allDayWrap.createSpan({ cls: "cem-toggle-label", text: allDayToggle.checked ? "Yes" : "No" });
+    const allDayLabel  = allDayWrap.createSpan({ cls: "cem-toggle-label" });
+    allDayLabel.setText(allDayToggle.checked ? "Yes" : "No");
     allDayToggle.addEventListener("change", () => {
       allDayLabel.setText(allDayToggle.checked ? "Yes" : "No");
       timeFields.style.display = allDayToggle.checked ? "none" : "";
     });
 
-    // Start date + time
-    const startRow = form.createDiv("cf-row");
-    const startDateInput = this.cemField(startRow, "Start date").createEl("input", {
+    // Start + End date
+    const dateRow        = form.createDiv("cf-row");
+    const startDateInput = this.field(dateRow, "Start date").createEl("input", {
       type: "date", cls: "cf-input"
     });
     startDateInput.value = e?.startDate ?? new Date().toISOString().split("T")[0];
 
-    const timeFields = form.createDiv("cem-time-fields");
-    timeFields.style.display = allDayToggle.checked ? "none" : "";
-
-    const startTimeRow = timeFields.createDiv("cf-row");
-    const startTimeInput = this.cemField(startTimeRow, "Start time").createEl("input", {
-      type: "time", cls: "cf-input"
-    });
-    startTimeInput.value = e?.startTime ?? "09:00";
-
-    const endTimeInput = this.cemField(startTimeRow, "End time").createEl("input", {
-      type: "time", cls: "cf-input"
-    });
-    endTimeInput.value = e?.endTime ?? "10:00";
-
-    // End date
-    const endDateInput = this.cemField(startRow, "End date").createEl("input", {
+    const endDateInput = this.field(dateRow, "End date").createEl("input", {
       type: "date", cls: "cf-input"
     });
     endDateInput.value = e?.endDate ?? new Date().toISOString().split("T")[0];
 
-    // Auto-advance end date when start changes
     startDateInput.addEventListener("change", () => {
       if (!endDateInput.value || endDateInput.value < startDateInput.value) {
         endDateInput.value = startDateInput.value;
       }
     });
 
+    // Time fields
+    const timeFields     = form.createDiv("cf-row");
+    timeFields.style.display = allDayToggle.checked ? "none" : "";
+
+    const startTimeInput = this.field(timeFields, "Start time").createEl("input", {
+      type: "time", cls: "cf-input"
+    });
+    startTimeInput.value = e?.startTime ?? "09:00";
+
+    const endTimeInput = this.field(timeFields, "End time").createEl("input", {
+      type: "time", cls: "cf-input"
+    });
+    endTimeInput.value = e?.endTime ?? "10:00";
+
     // Repeat
-    const recSelect = this.cemField(form, "Repeat").createEl("select", { cls: "cf-select" });
+    const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
     const recurrences = [
       { value: "",                                   label: "Never" },
       { value: "FREQ=DAILY",                         label: "Every day" },
@@ -118,24 +121,8 @@ export class EventModal extends Modal {
       if (e?.recurrence === r.value) opt.selected = true;
     }
 
-    // Calendar
-    const calSelect = this.cemField(form, "Calendar").createEl("select", { cls: "cf-select" });
-    calSelect.createEl("option", { value: "", text: "None" });
-    for (const cal of calendars) {
-      const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
-      if (e?.calendarId === cal.id) opt.selected = true;
-    }
-    const updateCalColor = () => {
-      const cal = this.calendarManager.getById(calSelect.value);
-      calSelect.style.borderLeftColor = cal ? CalendarManager.colorToHex(cal.color) : "transparent";
-      calSelect.style.borderLeftWidth = "4px";
-      calSelect.style.borderLeftStyle = "solid";
-    };
-    calSelect.addEventListener("change", updateCalColor);
-    updateCalColor();
-
     // Alert
-    const alertSelect = this.cemField(form, "Alert").createEl("select", { cls: "cf-select" });
+    const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
     const alerts: { value: AlertOffset; label: string }[] = [
       { value: "none",    label: "None" },
       { value: "at-time", label: "At time of event" },
@@ -154,14 +141,37 @@ export class EventModal extends Modal {
       if (e?.alert === a.value) opt.selected = true;
     }
 
-    // Notes
-    const notesInput = this.cemField(form, "Notes").createEl("textarea", {
-      cls: "cf-textarea", placeholder: "Add notes..."
-    });
-    notesInput.value = e?.notes ?? "";
+    // Calendar
+    const calSelect = this.field(form, "Calendar").createEl("select", { cls: "cf-select" });
+    calSelect.createEl("option", { value: "", text: "None" });
+    for (const cal of calendars) {
+      const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
+      if (e?.calendarId === cal.id) opt.selected = true;
+    }
+    const updateCalColor = () => {
+      const cal = this.calendarManager.getById(calSelect.value);
+      calSelect.style.borderLeftColor = cal ? CalendarManager.colorToHex(cal.color) : "transparent";
+      calSelect.style.borderLeftWidth = "4px";
+      calSelect.style.borderLeftStyle = "solid";
+    };
+    calSelect.addEventListener("change", updateCalColor);
+    updateCalColor();
 
-    // ── Footer ───────────────────────────────────────────────────────────────
-    const footer = contentEl.createDiv("cem-footer");
+    // Tags
+    const tagsInput = this.field(form, "Tags").createEl("input", {
+      type: "text", cls: "cf-input",
+      placeholder: "work, personal  (comma separated)"
+    });
+    tagsInput.value = e?.tags?.join(", ") ?? "";
+
+    const defaultAlert = this.plugin?.settings?.defaultAlert ?? "none";
+    for (const a of alerts) {
+      const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
+      if (e?.alert === a.value) opt.selected = true;
+    }
+
+    // ── Footer (always visible, outside scroll area) ───────────────────
+    const footer    = contentEl.createDiv("cem-footer");
     const cancelBtn = footer.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
 
     if (e && e.id) {
@@ -173,14 +183,20 @@ export class EventModal extends Modal {
       });
     }
 
-    const saveBtn = footer.createEl("button", { cls: "cf-btn-primary", text: e && e.id ? "Save" : "Add event" });
+    const saveBtn = footer.createEl("button", {
+      cls: "cf-btn-primary", text: e && e.id ? "Save" : "Add event"
+    });
 
-    // ── Handlers ─────────────────────────────────────────────────────────────
+    // ── Handlers ──────────────────────────────────────────────────────────
     cancelBtn.addEventListener("click", () => this.close());
 
     const handleSave = async () => {
       const title = titleInput.value.trim();
-      if (!title) { titleInput.focus(); titleInput.classList.add("cf-error"); return; }
+      if (!title) {
+        titleInput.focus();
+        titleInput.classList.add("cf-error");
+        return;
+      }
 
       const eventData = {
         title,
@@ -193,8 +209,9 @@ export class EventModal extends Modal {
         recurrence:  recSelect.value || undefined,
         calendarId:  calSelect.value || undefined,
         alert:       alertSelect.value as AlertOffset,
-        notes:       notesInput.value || undefined,
-        linkedTaskIds: e?.linkedTaskIds ?? [],
+        tags:              e?.tags ?? [],
+        notes:       e?.notes,
+        linkedTaskIds:      e?.linkedTaskIds ?? [],
         completedInstances: e?.completedInstances ?? [],
       };
 
@@ -209,15 +226,16 @@ export class EventModal extends Modal {
     };
 
     saveBtn.addEventListener("click", handleSave);
-    expandBtn.addEventListener("click", () => {
-      this.close();
-      this.onExpand?.(e ?? undefined);
-    });
-
     titleInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") handleSave();
       if (e.key === "Escape") this.close();
     });
+  }
+
+  private field(parent: HTMLElement, label: string): HTMLElement {
+    const wrap = parent.createDiv("cf-field");
+    wrap.createDiv("cf-label").setText(label);
+    return wrap;
   }
 
   onClose() {

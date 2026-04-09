@@ -1,34 +1,37 @@
-import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./EventFormView";
-import { ChronicleEvent } from "../types";
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { EventManager } from "../data/EventManager";
 import { TaskManager } from "../data/TaskManager";
 import { CalendarManager } from "../data/CalendarManager";
 import { ChronicleEvent, ChronicleTask } from "../types";
 import { EventModal } from "../ui/EventModal";
+import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./EventFormView";
+import type ChroniclePlugin from "../main";
 
 export const CALENDAR_VIEW_TYPE = "chronicle-calendar-view";
 type CalendarMode = "day" | "week" | "month" | "year";
-
 const HOUR_HEIGHT = 56;
 
 export class CalendarView extends ItemView {
   private eventManager:    EventManager;
   private taskManager:     TaskManager;
   private calendarManager: CalendarManager;
+  private plugin:          ChroniclePlugin;
   private currentDate: Date         = new Date();
   private mode:        CalendarMode = "week";
+  private _modeSet                  = false;
 
   constructor(
     leaf: WorkspaceLeaf,
     eventManager:    EventManager,
     taskManager:     TaskManager,
-    calendarManager: CalendarManager
+    calendarManager: CalendarManager,
+    plugin:          ChroniclePlugin
   ) {
     super(leaf);
     this.eventManager    = eventManager;
     this.taskManager     = taskManager;
     this.calendarManager = calendarManager;
+    this.plugin          = plugin;
   }
 
   getViewType():    string { return CALENDAR_VIEW_TYPE; }
@@ -69,6 +72,12 @@ export class CalendarView extends ItemView {
     container.addClass("chronicle-cal-app");
 
     const tasks  = await this.taskManager.getAll();
+
+    // Apply default view from settings if this is the first render
+    if (!this._modeSet) {
+      this.mode     = this.plugin.settings.defaultCalendarView ?? "week";
+      this._modeSet = true;
+    }
 
     // Get date range for current view so recurrence expansion is scoped
     const rangeStart = this.getRangeStart();

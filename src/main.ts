@@ -1,3 +1,4 @@
+import { ChronicleSettingsTab } from "./ui/SettingsTab";
 import { AlertManager } from "./data/AlertManager";
 import { ChronicleSettings, DEFAULT_SETTINGS, ChronicleEvent } from "./types";
 import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./views/EventFormView";
@@ -28,13 +29,18 @@ export default class ChroniclePlugin extends Plugin {
     this.taskManager  = new TaskManager(this.app, this.settings.tasksFolder);
     this.eventManager = new EventManager(this.app, this.settings.eventsFolder);
 
-    this.alertManager = new AlertManager(this.app, this.taskManager, this.eventManager);
+    this.alertManager = new AlertManager(
+      this.app,
+      this.taskManager,
+      this.eventManager,
+      () => this.settings
+    );
     this.alertManager.start();
     this.alertManager.stop();
 
     this.registerView(
       TASK_VIEW_TYPE,
-      (leaf) => new TaskView(leaf, this.taskManager, this.calendarManager, this.eventManager)
+      (leaf) => new TaskView(leaf, this.taskManager, this.calendarManager, this.eventManager, this)
     );
     this.registerView(
       TASK_FORM_VIEW_TYPE,
@@ -42,7 +48,7 @@ export default class ChroniclePlugin extends Plugin {
     );
     this.registerView(
       CALENDAR_VIEW_TYPE,
-      (leaf) => new CalendarView(leaf, this.eventManager, this.taskManager, this.calendarManager)
+      (leaf) => new CalendarView(leaf, this.eventManager, this.taskManager, this.calendarManager, this)
     );
     this.registerView(
       EVENT_FORM_VIEW_TYPE,
@@ -78,6 +84,8 @@ export default class ChroniclePlugin extends Plugin {
       hotkeys: [{ modifiers: ["Mod", "Shift"], key: "n" }],
       callback: () => this.openEventModal(),
     });
+
+    this.addSettingTab(new ChronicleSettingsTab(this.app, this));
 
     console.log("Chronicle loaded ✓");
   }
