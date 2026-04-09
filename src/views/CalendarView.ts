@@ -1,3 +1,5 @@
+import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./EventFormView";
+import { ChronicleEvent } from "../types";
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { EventManager } from "../data/EventManager";
 import { TaskManager } from "../data/TaskManager";
@@ -86,6 +88,20 @@ export class CalendarView extends ItemView {
     else                            this.renderDayView(main, events, tasks);
   }
 
+private async openEventFullPage(event?: ChronicleEvent) {
+    const { workspace } = this.app;
+    const existing = workspace.getLeavesOfType(EVENT_FORM_VIEW_TYPE)[0];
+    if (existing) existing.detach();
+    const leaf = workspace.getLeaf("tab");
+    await leaf.setViewState({ type: EVENT_FORM_VIEW_TYPE, active: true });
+    workspace.revealLeaf(leaf);
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const formLeaf = workspace.getLeavesOfType(EVENT_FORM_VIEW_TYPE)[0];
+    const formView = formLeaf?.view as EventFormView | undefined;
+    if (formView && event) formView.loadEvent(event);
+  }
+
   // ── Sidebar ───────────────────────────────────────────────────────────────
 
 private getRangeStart(): string {
@@ -122,7 +138,7 @@ private getRangeStart(): string {
     newEventBtn.addEventListener("click", () => {
       new EventModal(
         this.app, this.eventManager, this.calendarManager,
-        undefined, () => this.render()
+        undefined, () => this.render(), (e) => this.openEventFullPage(e)
       ).open();
     });
 
@@ -322,7 +338,7 @@ private getRangeStart(): string {
           pill.setText(event.title);
           pill.addEventListener("click", (e) => {
             e.stopPropagation();
-            new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render()).open();
+            new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
           });
         });
 
@@ -532,15 +548,16 @@ private getRangeStart(): string {
   private openNewEventModal(dateStr: string, allDay: boolean, hour = 9, minute = 0) {
     const timeStr = `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;
     const endStr  = `${String(Math.min(hour+1,23)).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;
+    const prefill = {
+      id: "", title: "", allDay,
+      startDate: dateStr, startTime: allDay ? undefined : timeStr,
+      endDate:   dateStr, endTime:   allDay ? undefined : endStr,
+      alert: "none", linkedTaskIds: [], completedInstances: [], createdAt: ""
+    } as ChronicleEvent;
+
     new EventModal(
       this.app, this.eventManager, this.calendarManager,
-      {
-        id: "", title: "", allDay,
-        startDate: dateStr, startTime: allDay ? undefined : timeStr,
-        endDate:   dateStr, endTime:   allDay ? undefined : endStr,
-        alert: "none", linkedTaskIds: [], completedInstances: [], createdAt: ""
-      } as ChronicleEvent,
-      () => this.render()
+      prefill, () => this.render(), (e) => this.openEventFullPage(e ?? prefill)
     ).open();
   }
 
@@ -554,7 +571,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     editItem.setText("Edit event");
     editItem.addEventListener("click", () => {
       menu.remove();
-      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render()).open();
+      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
     });
 
     const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
@@ -603,7 +620,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
 
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
-      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render()).open();
+      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
     });
 
     pill.addEventListener("contextmenu", (e) => {
@@ -622,7 +639,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     pill.style.color           = color;
     pill.setText(event.title);
     pill.addEventListener("click", () =>
-      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render()).open()
+      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open()
     );
 
     pill.addEventListener("contextmenu", (e) => {

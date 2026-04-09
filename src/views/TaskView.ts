@@ -1,3 +1,4 @@
+import { TaskModal } from "../ui/TaskModal";
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { ChronicleTask } from "../types";
 import { TaskManager } from "../data/TaskManager";
@@ -29,10 +30,9 @@ export class TaskView extends ItemView {
   getDisplayText(): string { return "Chronicle"; }
   getIcon(): string { return "check-circle"; }
 
-async onOpen() {
+  async onOpen() {
     await this.render();
 
-    // Auto-refresh whenever any file in the vault changes
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
         if (file.path.startsWith(this.taskManager["tasksFolder"])) {
@@ -40,7 +40,6 @@ async onOpen() {
         }
       })
     );
-
     this.registerEvent(
       this.app.vault.on("create", (file) => {
         if (file.path.startsWith(this.taskManager["tasksFolder"])) {
@@ -48,7 +47,6 @@ async onOpen() {
         }
       })
     );
-
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
         if (file.path.startsWith(this.taskManager["tasksFolder"])) {
@@ -108,6 +106,16 @@ async onOpen() {
       t.addEventListener("click", () => { this.currentListId = tile.id; this.render(); });
     }
 
+    // ── Completed archive entry ───────────────────────────────────────────
+    const completedRow = sidebar.createDiv("chronicle-list-row");
+    if (this.currentListId === "completed") completedRow.addClass("active");
+    const completedIcon = completedRow.createDiv("chronicle-completed-icon");
+    completedIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+    completedRow.createDiv("chronicle-list-name").setText("Completed");
+    const completedCount = all.filter(t => t.status === "done").length;
+    if (completedCount > 0) completedRow.createDiv("chronicle-list-count").setText(String(completedCount));
+    completedRow.addEventListener("click", () => { this.currentListId = "completed"; this.render(); });
+
     // ── My Lists ──────────────────────────────────────────────────────────
     const listsSection = sidebar.createDiv("chronicle-lists-section");
     listsSection.createDiv("chronicle-section-label").setText("My Lists");
@@ -142,12 +150,14 @@ async onOpen() {
     let tasks: ChronicleTask[] = [];
 
     const smartColors: Record<string, string> = {
-      today: "#FF3B30", scheduled: "#378ADD", all: "#636366", flagged: "#FF9500"
+      today: "#FF3B30", scheduled: "#378ADD", all: "#636366",
+      flagged: "#FF9500", completed: "#34C759"
     };
 
     if (smartColors[this.currentListId]) {
       const labels: Record<string, string> = {
-        today: "Today", scheduled: "Scheduled", all: "All", flagged: "Flagged"
+        today: "Today", scheduled: "Scheduled", all: "All",
+        flagged: "Flagged", completed: "Completed"
       };
       titleEl.setText(labels[this.currentListId]);
       titleEl.style.color = smartColors[this.currentListId];
@@ -165,6 +175,9 @@ async onOpen() {
         case "all":
           tasks = all.filter(t => t.status !== "done");
           break;
+        case "completed":
+          tasks = all.filter(t => t.status === "done");
+          break;
       }
     } else {
       const cal = this.calendarManager.getById(this.currentListId);
@@ -177,11 +190,26 @@ async onOpen() {
       );
     }
 
-    const activeTasks = tasks.filter(t => t.status !== "done");
-    if (activeTasks.length > 0) {
-      header.createDiv("chronicle-main-subtitle").setText(
-        `${activeTasks.length} ${activeTasks.length === 1 ? "task" : "tasks"}`
-      );
+    const isCompleted = this.currentListId === "completed";
+    const countTasks  = isCompleted ? tasks : tasks.filter(t => t.status !== "done");
+    if (countTasks.length > 0) {
+      const subtitle = header.createDiv("chronicle-main-subtitle");
+      if (isCompleted) {
+        const clearBtn = subtitle.createEl("button", {
+          cls: "chronicle-clear-btn", text: "Clear all"
+        });
+        clearBtn.addEventListener("click", async () => {
+          const all2 = await this.taskManager.getAll();
+          for (const t of all2.filter(t => t.status === "done")) {
+            await this.taskManager.delete(t.id);
+          }
+          await this.render();
+        });
+      } else {
+        subtitle.setText(
+          `${countTasks.length} ${countTasks.length === 1 ? "task" : "tasks"}`
+        );
+      }
     }
 
     const listEl = main.createDiv("chronicle-task-list");
@@ -210,8 +238,9 @@ async onOpen() {
   }
 
   private renderTaskRow(container: HTMLElement, task: ChronicleTask) {
-    const row    = container.createDiv("chronicle-task-row");
-    const isDone = task.status === "done";
+    const row       = container.createDiv("chronicle-task-row");
+    const isDone    = task.status === "done";
+    const isArchive = this.currentListId === "completed";
 
     // Checkbox
     const checkboxWrap = row.createDiv("chronicle-checkbox-wrap");
@@ -228,13 +257,12 @@ async onOpen() {
           status:      isDone ? "todo" : "done",
           completedAt: isDone ? undefined : new Date().toISOString(),
         });
-        await this.render();
       }, 300);
     });
 
-    // Content — click to edit
+    // Content
     const content = row.createDiv("chronicle-task-content");
-    content.addEventListener("click", () => this.openTaskForm(task));
+    if (!isArchive) content.addEventListener("click", () => this.openTaskForm(task));
 
     const titleEl = content.createDiv("chronicle-task-title");
     titleEl.setText(task.title);
@@ -242,51 +270,76 @@ async onOpen() {
 
     // Meta
     const todayStr = new Date().toISOString().split("T")[0];
-    if (task.dueDate || task.calendarId) {
-      const meta = content.createDiv("chronicle-task-meta");
+    const metaRow  = content.createDiv("chronicle-task-meta");
 
+    if (isArchive && task.completedAt) {
+      const completedDate = new Date(task.completedAt);
+      metaRow.createSpan("chronicle-task-date").setText(
+        "Completed " + completedDate.toLocaleDateString("en-US", {
+          month: "short", day: "numeric", year: "numeric"
+        })
+      );
+    } else if (task.dueDate || task.calendarId) {
       if (task.dueDate) {
-        const metaDate = meta.createSpan("chronicle-task-date");
+        const metaDate = metaRow.createSpan("chronicle-task-date");
         metaDate.setText(this.formatDate(task.dueDate));
         if (task.dueDate < todayStr) metaDate.addClass("overdue");
       }
-
       if (task.calendarId) {
         const cal = this.calendarManager.getById(task.calendarId);
         if (cal) {
-          const calDot = meta.createSpan("chronicle-task-cal-dot");
+          const calDot = metaRow.createSpan("chronicle-task-cal-dot");
           calDot.style.backgroundColor = CalendarManager.colorToHex(cal.color);
-          meta.createSpan("chronicle-task-cal-name").setText(cal.name);
+          metaRow.createSpan("chronicle-task-cal-name").setText(cal.name);
         }
       }
     }
 
-    // Priority flag
-    if (task.priority === "high") {
+    // Priority flag (non-archive only)
+    if (!isArchive && task.priority === "high") {
       row.createDiv("chronicle-flag").setText("⚑");
     }
 
-    // Right-click context menu
+    // Archive: Restore + Delete buttons
+    if (isArchive) {
+      const actions = row.createDiv("chronicle-archive-actions");
+
+      const restoreBtn = actions.createEl("button", {
+        cls: "chronicle-archive-btn", text: "Restore"
+      });
+      restoreBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await this.taskManager.update({ ...task, status: "todo", completedAt: undefined });
+      });
+
+      const deleteBtn = actions.createEl("button", {
+        cls: "chronicle-archive-btn chronicle-archive-btn-delete", text: "Delete"
+      });
+      deleteBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await this.taskManager.delete(task.id);
+      });
+
+      return;
+    }
+
+    // Right-click context menu (non-archive)
     row.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       const menu = document.createElement("div");
-      menu.className = "chronicle-context-menu";
+      menu.className  = "chronicle-context-menu";
       menu.style.left = `${e.clientX}px`;
       menu.style.top  = `${e.clientY}px`;
 
       const editItem = menu.createDiv("chronicle-context-item");
       editItem.setText("Edit task");
-      editItem.addEventListener("click", () => {
-        menu.remove();
-        this.openTaskForm(task);
-      });
+      editItem.addEventListener("click", () => { menu.remove(); this.openTaskForm(task); });
 
       const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
       deleteItem.setText("Delete task");
       deleteItem.addEventListener("click", async () => {
         menu.remove();
         await this.taskManager.delete(task.id);
-        await this.render();
       });
 
       const cancelItem = menu.createDiv("chronicle-context-item");
@@ -301,6 +354,22 @@ async onOpen() {
   private groupTasks(tasks: ChronicleTask[]): Record<string, ChronicleTask[]> {
     const today    = new Date().toISOString().split("T")[0];
     const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+    const weekAgo  = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+
+    if (this.currentListId === "completed") {
+      const groups: Record<string, ChronicleTask[]> = {
+        "Today":     [],
+        "This week": [],
+        "Earlier":   [],
+      };
+      for (const task of tasks) {
+        const d = task.completedAt?.split("T")[0] ?? "";
+        if (d === today)       groups["Today"].push(task);
+        else if (d >= weekAgo) groups["This week"].push(task);
+        else                   groups["Earlier"].push(task);
+      }
+      return groups;
+    }
 
     const groups: Record<string, ChronicleTask[]> = {
       "Overdue":   [],
@@ -333,6 +402,17 @@ async onOpen() {
   }
 
   async openTaskForm(task?: ChronicleTask) {
+    new TaskModal(
+      this.app,
+      this.taskManager,
+      this.calendarManager,
+      task,
+      undefined,
+      (t) => this.openTaskFullPage(t)
+    ).open();
+  }
+
+  async openTaskFullPage(task?: ChronicleTask) {
     const { workspace } = this.app;
     const existing = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
     if (existing) existing.detach();

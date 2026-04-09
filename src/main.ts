@@ -1,3 +1,5 @@
+import { ChronicleSettings, DEFAULT_SETTINGS, ChronicleEvent } from "./types";
+import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./views/EventFormView";
 import { Plugin, WorkspaceLeaf } from "obsidian";
 import { ChronicleSettings, DEFAULT_SETTINGS } from "./types";
 import { CalendarManager } from "./data/CalendarManager";
@@ -35,6 +37,10 @@ export default class ChroniclePlugin extends Plugin {
     this.registerView(
       CALENDAR_VIEW_TYPE,
       (leaf) => new CalendarView(leaf, this.eventManager, this.taskManager, this.calendarManager)
+    );
+    this.registerView(
+      EVENT_FORM_VIEW_TYPE,
+      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager)
     );
 
     // Ribbon — tasks (checklist icon)
@@ -99,10 +105,14 @@ export default class ChroniclePlugin extends Plugin {
     workspace.revealLeaf(leaf);
   }
 
-  openEventModal() {
+  openEventModal(event?: ChronicleEvent) {
     new EventModal(
-      this.app, this.eventManager, this.calendarManager,
-      undefined, () => {}
+      this.app,
+      this.eventManager,
+      this.calendarManager,
+      event,
+      undefined,
+      (e) => this.openEventFullPage(e)
     ).open();
   }
 
@@ -110,6 +120,7 @@ export default class ChroniclePlugin extends Plugin {
     this.app.workspace.detachLeavesOfType(TASK_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(EVENT_FORM_VIEW_TYPE);
   }
 
   async loadSettings() {
@@ -118,5 +129,19 @@ export default class ChroniclePlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  async openEventFullPage(event?: ChronicleEvent) {
+    const { workspace } = this.app;
+    const existing = workspace.getLeavesOfType(EVENT_FORM_VIEW_TYPE)[0];
+    if (existing) existing.detach();
+    const leaf = workspace.getLeaf("tab");
+    await leaf.setViewState({ type: EVENT_FORM_VIEW_TYPE, active: true });
+    workspace.revealLeaf(leaf);
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const formLeaf = workspace.getLeavesOfType(EVENT_FORM_VIEW_TYPE)[0];
+    const formView = formLeaf?.view as EventFormView | undefined;
+    if (formView && event) formView.loadEvent(event);
   }
 }
