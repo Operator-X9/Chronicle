@@ -1,3 +1,4 @@
+import { AlertManager } from "./data/AlertManager";
 import { ChronicleSettings, DEFAULT_SETTINGS, ChronicleEvent } from "./types";
 import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./views/EventFormView";
 import { Plugin, WorkspaceLeaf } from "obsidian";
@@ -15,6 +16,7 @@ export default class ChroniclePlugin extends Plugin {
   calendarManager: CalendarManager;
   taskManager: TaskManager;
   eventManager: EventManager;
+  alertManager: AlertManager;
 
   async onload() {
     await this.loadSettings();
@@ -25,6 +27,10 @@ export default class ChroniclePlugin extends Plugin {
     );
     this.taskManager  = new TaskManager(this.app, this.settings.tasksFolder);
     this.eventManager = new EventManager(this.app, this.settings.eventsFolder);
+
+    this.alertManager = new AlertManager(this.app, this.taskManager, this.eventManager);
+    this.alertManager.start();
+    this.alertManager.stop();
 
     this.registerView(
       TASK_VIEW_TYPE,

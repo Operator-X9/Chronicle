@@ -1,3 +1,4 @@
+import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { App, TFile, normalizePath } from "obsidian";
 import { ChronicleTask, TaskStatus, TaskPriority } from "../types";
 
@@ -116,6 +117,7 @@ export class TaskManager {
       "due-date":         task.dueDate ?? null,
       "due-time":         task.dueTime ?? null,
       recurrence:         task.recurrence ?? null,
+      "alert":            task.alert ?? "none",
       "time-estimate":    task.timeEstimate ?? null,
       "time-entries":     task.timeEntries,
       "custom-fields":    task.customFields,
@@ -150,6 +152,7 @@ export class TaskManager {
         dueDate:            fm["due-date"] ?? undefined,
         dueTime:            fm["due-time"] ?? undefined,
         recurrence:         fm.recurrence ?? undefined,
+        alert:              (fm.alert as AlertOffset) ?? "none",
         calendarId:         fm["calendar-id"] ?? undefined,
         tags:               fm.tags ?? [],
         contexts:           fm.contexts ?? [],

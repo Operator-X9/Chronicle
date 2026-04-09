@@ -682,7 +682,13 @@
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
-  max-height: calc(90vh - 130px);
+  max-height: calc(90vh - 100px);
+}
+
+.modal:has(.chronicle-event-modal) {
+  width: 520px;
+  max-height: 92vh;
+  overflow: hidden;
 }
 
 .cem-toggle-wrap {

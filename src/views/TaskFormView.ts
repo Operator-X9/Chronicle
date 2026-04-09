@@ -1,3 +1,4 @@
+import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import { TaskManager } from "../data/TaskManager";
 import { CalendarManager } from "../data/CalendarManager";
@@ -95,13 +96,13 @@ export class TaskFormView extends ItemView {
     // Due date + time (side by side)
     const row2 = form.createDiv("cf-row");
 
-    const dueDateField = this.field(row2, "Due date");
+    const dueDateField = this.field(row2, "Date");
     const dueDateInput = dueDateField.createEl("input", {
       type: "date", cls: "cf-input"
     });
     dueDateInput.value = t?.dueDate ?? "";
 
-    const dueTimeField = this.field(row2, "Due time");
+    const dueTimeField = this.field(row2, "Time");
     const dueTimeInput = dueTimeField.createEl("input", {
       type: "time", cls: "cf-input"
     });
@@ -218,6 +219,27 @@ export class TaskFormView extends ItemView {
     };
     renderCustomFields();
 
+    // Alert
+    const alertField  = this.field(form, "Alert");
+    const alertSelect = alertField.createEl("select", { cls: "cf-select" });
+    const formAlerts: { value: AlertOffset; label: string }[] = [
+      { value: "none",    label: "None" },
+      { value: "at-time", label: "At time of task" },
+      { value: "5min",    label: "5 minutes before" },
+      { value: "10min",   label: "10 minutes before" },
+      { value: "15min",   label: "15 minutes before" },
+      { value: "30min",   label: "30 minutes before" },
+      { value: "1hour",   label: "1 hour before" },
+      { value: "2hours",  label: "2 hours before" },
+      { value: "1day",    label: "1 day before" },
+      { value: "2days",   label: "2 days before" },
+      { value: "1week",   label: "1 week before" },
+    ];
+    for (const a of formAlerts) {
+      const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
+      if (t?.alert === a.value) opt.selected = true;
+    }
+
     // Notes
     const notesField = this.field(form, "Notes");
     const notesInput = notesField.createEl("textarea", {
@@ -264,6 +286,7 @@ export class TaskFormView extends ItemView {
         timeEntries:   t?.timeEntries ?? [],
         completedInstances: t?.completedInstances ?? [],
         customFields:  customFields.filter(f => f.key).map(f => ({ key: f.key, value: f.value })),
+        alert:         alertSelect.value as AlertOffset,
         notes:         notesInput.value || undefined,
       };
 

@@ -1,3 +1,4 @@
+import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { App, Modal, Notice } from "obsidian";
 import { TaskManager } from "../data/TaskManager";
 import { CalendarManager } from "../data/CalendarManager";
@@ -86,12 +87,12 @@ export class TaskModal extends Modal {
     // Due date + time
     const row2 = form.createDiv("cf-row");
 
-    const dueDateInput = this.field(row2, "Due date").createEl("input", {
+    const dueDateInput = this.field(row2, "Date").createEl("input", {
       type: "date", cls: "cf-input"
     });
     dueDateInput.value = t?.dueDate ?? "";
 
-    const dueTimeInput = this.field(row2, "Due time").createEl("input", {
+    const dueTimeInput = this.field(row2, "Time").createEl("input", {
       type: "time", cls: "cf-input"
     });
     dueTimeInput.value = t?.dueTime ?? "";
@@ -127,6 +128,31 @@ export class TaskModal extends Modal {
       if (t?.recurrence === r.value) opt.selected = true;
     }
 
+    // Alert
+    const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
+    const taskAlerts: { value: AlertOffset; label: string }[] = [
+      { value: "none",    label: "None" },
+      { value: "at-time", label: "At time of task" },
+      { value: "5min",    label: "5 minutes before" },
+      { value: "10min",   label: "10 minutes before" },
+      { value: "15min",   label: "15 minutes before" },
+      { value: "30min",   label: "30 minutes before" },
+      { value: "1hour",   label: "1 hour before" },
+      { value: "2hours",  label: "2 hours before" },
+      { value: "1day",    label: "1 day before" },
+      { value: "2days",   label: "2 days before" },
+      { value: "1week",   label: "1 week before" },
+    ];
+    for (const a of taskAlerts) {
+      const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
+      if (t?.alert === a.value) opt.selected = true;
+    }
+
+    if (!t) {
+      const noneOpt = alertSelect.querySelector('option[value="none"]') as HTMLOptionElement;
+      if (noneOpt) noneOpt.selected = true;
+    }
+    
     // Notes
     const notesInput = this.field(form, "Notes").createEl("textarea", {
       cls: "cf-textarea", placeholder: "Add notes..."
@@ -182,6 +208,7 @@ export class TaskModal extends Modal {
         calendarId:  calSelect.value || undefined,
         recurrence:  recSelect.value || undefined,
         notes:       notesInput.value || undefined,
+        alert:       alertSelect.value as AlertOffset,
         tags:              t?.tags ?? [],
         contexts:          t?.contexts ?? [],
         linkedNotes:       t?.linkedNotes ?? [],

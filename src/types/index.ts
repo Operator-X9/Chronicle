@@ -39,6 +39,7 @@ export interface ChronicleTask {
   dueDate?: string;       // YYYY-MM-DD
   dueTime?: string;       // HH:mm
   recurrence?: string;    // RRULE string e.g. "FREQ=WEEKLY;BYDAY=MO"
+  
 
   // --- Organisation ---
   calendarId?: string;    // links to a ChronicleCalendar
