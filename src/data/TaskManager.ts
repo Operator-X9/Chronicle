@@ -1,6 +1,5 @@
 import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { App, TFile, normalizePath } from "obsidian";
-import { ChronicleTask, TaskStatus, TaskPriority } from "../types";
 
 export class TaskManager {
   constructor(private app: App, private tasksFolder: string) {}
@@ -46,7 +45,6 @@ export class TaskManager {
     const file = this.findFileForTask(task.id);
     if (!file) return;
 
-    // If title changed, rename the file
     const expectedPath = normalizePath(`${this.tasksFolder}/${task.title}.md`);
     if (file.path !== expectedPath) {
       await this.app.fileManager.renameFile(file, expectedPath);
@@ -71,7 +69,7 @@ export class TaskManager {
     });
   }
 
-  // ── Filters (used by smart lists) ───────────────────────────────────────────
+  // ── Filters ─────────────────────────────────────────────────────────────────
 
   async getDueToday(): Promise<ChronicleTask[]> {
     const today = this.todayStr();
@@ -105,25 +103,25 @@ export class TaskManager {
 
   private taskToMarkdown(task: ChronicleTask): string {
     const fm: Record<string, unknown> = {
-      id:                 task.id,
-      title:              task.title,
-      "location":         task.location ?? null,
-      status:             task.status,
-      priority:           task.priority,
-      tags:               task.tags,
-      projects:           task.projects,
-      "linked-notes":     task.linkedNotes,
-      "calendar-id":      task.calendarId ?? null,
-      "due-date":         task.dueDate ?? null,
-      "due-time":         task.dueTime ?? null,
-      recurrence:         task.recurrence ?? null,
-      "alert":            task.alert ?? "none",
-      "time-estimate":    task.timeEstimate ?? null,
-      "time-entries":     task.timeEntries,
-      "custom-fields":    task.customFields,
+      id:                    task.id,
+      title:                 task.title,
+      "location":            task.location ?? null,
+      status:                task.status,
+      priority:              task.priority,
+      tags:                  task.tags,
+      projects:              task.projects,
+      "linked-notes":        task.linkedNotes,
+      "list-id":             task.listId ?? null,
+      "due-date":            task.dueDate ?? null,
+      "due-time":            task.dueTime ?? null,
+      recurrence:            task.recurrence ?? null,
+      "alert":               task.alert ?? "none",
+      "time-estimate":       task.timeEstimate ?? null,
+      "time-entries":        task.timeEntries,
+      "custom-fields":       task.customFields,
       "completed-instances": task.completedInstances,
-      "created-at":       task.createdAt,
-      "completed-at":     task.completedAt ?? null,
+      "created-at":          task.createdAt,
+      "completed-at":        task.completedAt ?? null,
     };
 
     const yaml = Object.entries(fm)
@@ -154,7 +152,8 @@ export class TaskManager {
         dueTime:            fm["due-time"] ?? undefined,
         recurrence:         fm.recurrence ?? undefined,
         alert:              (fm.alert as AlertOffset) ?? "none",
-        calendarId:         fm["calendar-id"] ?? undefined,
+        // read new list-id; fall back to legacy calendar-id so old tasks still show their list
+        listId:             fm["list-id"] ?? fm["calendar-id"] ?? undefined,
         tags:               fm.tags ?? [],
         linkedNotes:        fm["linked-notes"] ?? [],
         projects:           fm.projects ?? [],

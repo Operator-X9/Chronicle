@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { EventManager } from "../data/EventManager";
 import { CalendarManager } from "../data/CalendarManager";
+import { TaskManager } from "../data/TaskManager";
 import { ChronicleEvent, AlertOffset } from "../types";
 
 export const EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
@@ -8,6 +9,7 @@ export const EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
 export class EventFormView extends ItemView {
   private eventManager: EventManager;
   private calendarManager: CalendarManager;
+  private taskManager: TaskManager;
   private editingEvent: ChronicleEvent | null = null;
   onSave?: () => void;
 
@@ -15,12 +17,14 @@ export class EventFormView extends ItemView {
     leaf: WorkspaceLeaf,
     eventManager: EventManager,
     calendarManager: CalendarManager,
+    taskManager: TaskManager,
     editingEvent?: ChronicleEvent,
     onSave?: () => void
   ) {
     super(leaf);
     this.eventManager    = eventManager;
     this.calendarManager = calendarManager;
+    this.taskManager     = taskManager;
     this.editingEvent    = editingEvent ?? null;
     this.onSave          = onSave;
   }
@@ -29,20 +33,24 @@ export class EventFormView extends ItemView {
   getDisplayText(): string { return this.editingEvent ? "Edit event" : "New event"; }
   getIcon():        string { return "calendar"; }
 
-  async onOpen() { this.render(); }
+  async onOpen() { await this.render(); }
 
   loadEvent(event: ChronicleEvent) {
     this.editingEvent = event;
     this.render();
   }
 
-  render() {
+  async render() {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass("chronicle-form-page");
 
     const e         = this.editingEvent;
     const calendars = this.calendarManager.getAll();
+
+    // Fetch all tasks upfront for linked-tasks UI
+    const allTasks = await this.taskManager.getAll();
+    let linkedIds: string[] = [...(e?.linkedTaskIds ?? [])];
 
     // ── Header ──────────────────────────────────────────────────────────
     const header = container.createDiv("cf-header");
@@ -174,6 +182,106 @@ export class EventFormView extends ItemView {
     });
     linkedInput.value = e?.linkedNotes?.join(", ") ?? "";
 
+    // ── Linked tasks ─────────────────────────────────────────────────────
+    const linkedTasksField = this.field(form, "Linked tasks");
+    const linkedList       = linkedTasksField.createDiv("ctl-list");
+
+    const renderLinkedList = () => {
+      linkedList.empty();
+      const items = allTasks.filter(t => linkedIds.includes(t.id));
+      if (items.length === 0) {
+        linkedList.createDiv("ctl-empty").setText("No linked tasks");
+      }
+      for (const task of items) {
+        const row = linkedList.createDiv("ctl-item");
+        row.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
+        row.createSpan({ cls: "ctl-title" }).setText(task.title);
+        const unlinkBtn = row.createEl("button", { cls: "ctl-unlink", text: "×" });
+        unlinkBtn.addEventListener("click", () => {
+          linkedIds = linkedIds.filter(id => id !== task.id);
+          renderLinkedList();
+        });
+      }
+    };
+    renderLinkedList();
+
+    // Search to link existing tasks
+    const searchWrap    = linkedTasksField.createDiv("ctl-search-wrap");
+    const searchInput   = searchWrap.createEl("input", {
+      type: "text", cls: "cf-input ctl-search",
+      placeholder: "Search tasks to link…"
+    });
+    const searchResults = searchWrap.createDiv("ctl-results");
+    searchResults.style.display = "none";
+
+    const closeSearch = () => {
+      searchResults.style.display = "none";
+      searchResults.empty();
+    };
+
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.toLowerCase().trim();
+      searchResults.empty();
+      if (!q) { closeSearch(); return; }
+
+      const matches = allTasks
+        .filter(t => !linkedIds.includes(t.id) && t.title.toLowerCase().includes(q))
+        .slice(0, 6);
+
+      if (matches.length === 0) { closeSearch(); return; }
+      searchResults.style.display = "";
+      for (const task of matches) {
+        const item = searchResults.createDiv("ctl-result-item");
+        item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
+        item.createSpan({ cls: "ctl-result-title" }).setText(task.title);
+        item.addEventListener("mousedown", (ev) => {
+          ev.preventDefault();
+          linkedIds.push(task.id);
+          searchInput.value = "";
+          closeSearch();
+          renderLinkedList();
+        });
+      }
+    });
+
+    searchInput.addEventListener("blur", () => {
+      setTimeout(closeSearch, 150);
+    });
+
+    // Create new task and link it
+    const newTaskWrap  = linkedTasksField.createDiv("ctl-new-wrap");
+    const newTaskInput = newTaskWrap.createEl("input", {
+      type: "text", cls: "cf-input ctl-new-input",
+      placeholder: "New task title…"
+    });
+    const addTaskBtn = newTaskWrap.createEl("button", { cls: "cf-btn-primary ctl-add-btn", text: "Add task" });
+
+    const createAndLink = async () => {
+      const title = newTaskInput.value.trim();
+      if (!title) return;
+      const newTask = await this.taskManager.create({
+        title,
+        status:             "todo",
+        priority:           "none",
+        calendarId:         calSelect.value || undefined,
+        tags:               [],
+        linkedNotes:        [],
+        projects:           [],
+        timeEntries:        [],
+        customFields:       [],
+        completedInstances: [],
+      });
+      allTasks.push(newTask);
+      linkedIds.push(newTask.id);
+      newTaskInput.value = "";
+      renderLinkedList();
+    };
+
+    addTaskBtn.addEventListener("click", createAndLink);
+    newTaskInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") { ev.preventDefault(); createAndLink(); }
+    });
+
     // Notes
     const notesInput = this.field(form, "Notes").createEl("textarea", {
       cls: "cf-textarea", placeholder: "Add notes..."
@@ -201,9 +309,9 @@ export class EventFormView extends ItemView {
         calendarId:  calSelect.value || undefined,
         alert:       alertSelect.value as AlertOffset,
         notes:       notesInput.value || undefined,
-        linkedNotes:   linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.linkedNotes ?? []),
-        tags:          tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.tags ?? []),
-        linkedTaskIds:      e?.linkedTaskIds ?? [],
+        linkedNotes: linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.linkedNotes ?? []),
+        tags:        tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.tags ?? []),
+        linkedTaskIds:      linkedIds,
         completedInstances: e?.completedInstances ?? [],
       };
 
@@ -218,8 +326,8 @@ export class EventFormView extends ItemView {
     };
 
     saveBtn.addEventListener("click", handleSave);
-    titleInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleSave();
+    titleInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") handleSave();
     });
   }
 

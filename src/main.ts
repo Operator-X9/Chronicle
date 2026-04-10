@@ -2,9 +2,9 @@ import { ChronicleSettingsTab } from "./ui/SettingsTab";
 import { AlertManager } from "./data/AlertManager";
 import { ChronicleSettings, DEFAULT_SETTINGS, ChronicleEvent } from "./types";
 import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./views/EventFormView";
-import { Plugin, WorkspaceLeaf } from "obsidian";
-import { ChronicleSettings, DEFAULT_SETTINGS } from "./types";
+import { Plugin } from "obsidian";
 import { CalendarManager } from "./data/CalendarManager";
+import { ListManager } from "./data/ListManager";
 import { TaskManager } from "./data/TaskManager";
 import { EventManager } from "./data/EventManager";
 import { TaskView, TASK_VIEW_TYPE } from "./views/TaskView";
@@ -15,6 +15,7 @@ import { EventModal } from "./ui/EventModal";
 export default class ChroniclePlugin extends Plugin {
   settings: ChronicleSettings;
   calendarManager: CalendarManager;
+  listManager: ListManager;
   taskManager: TaskManager;
   eventManager: EventManager;
   alertManager: AlertManager;
@@ -24,6 +25,10 @@ export default class ChroniclePlugin extends Plugin {
 
     this.calendarManager = new CalendarManager(
       this.settings.calendars,
+      () => this.saveSettings()
+    );
+    this.listManager = new ListManager(
+      this.settings.lists,
       () => this.saveSettings()
     );
     this.taskManager  = new TaskManager(this.app, this.settings.tasksFolder);
@@ -40,11 +45,11 @@ export default class ChroniclePlugin extends Plugin {
 
     this.registerView(
       TASK_VIEW_TYPE,
-      (leaf) => new TaskView(leaf, this.taskManager, this.calendarManager, this.eventManager, this)
+      (leaf) => new TaskView(leaf, this.taskManager, this.listManager, this)
     );
     this.registerView(
       TASK_FORM_VIEW_TYPE,
-      (leaf) => new TaskFormView(leaf, this.taskManager, this.calendarManager)
+      (leaf) => new TaskFormView(leaf, this.taskManager, this.listManager)
     );
     this.registerView(
       CALENDAR_VIEW_TYPE,
@@ -52,16 +57,12 @@ export default class ChroniclePlugin extends Plugin {
     );
     this.registerView(
       EVENT_FORM_VIEW_TYPE,
-      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager)
+      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.taskManager)
     );
 
-    // Ribbon — tasks (checklist icon)
     this.addRibbonIcon("check-circle", "Chronicle Tasks", () => this.activateTaskView());
-
-    // Ribbon — calendar
     this.addRibbonIcon("calendar", "Chronicle Calendar", () => this.activateCalendarView());
 
-    // Commands
     this.addCommand({
       id: "open-chronicle",
       name: "Open task dashboard",
@@ -86,7 +87,6 @@ export default class ChroniclePlugin extends Plugin {
     });
 
     this.addSettingTab(new ChronicleSettingsTab(this.app, this));
-
     console.log("Chronicle loaded ✓");
   }
 
@@ -124,6 +124,7 @@ export default class ChroniclePlugin extends Plugin {
       this.app,
       this.eventManager,
       this.calendarManager,
+      this.taskManager,
       event,
       undefined,
       (e) => this.openEventFullPage(e)
@@ -143,6 +144,7 @@ export default class ChroniclePlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+    (this.app.workspace as any).trigger("chronicle:settings-changed");
   }
 
   async openEventFullPage(event?: ChronicleEvent) {

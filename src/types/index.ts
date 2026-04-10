@@ -11,6 +11,15 @@ export interface ChronicleCalendar {
   createdAt: string;
 }
 
+// ─── Lists (task organisation) ───────────────────────────────────────────────
+
+export interface ChronicleList {
+  id: string;
+  name: string;
+  color: string;    // hex value e.g. "#378ADD"
+  createdAt: string;
+}
+
 // ─── Tasks ───────────────────────────────────────────────────────────────────
 
 export type TaskStatus = "todo" | "in-progress" | "done" | "cancelled";
@@ -37,11 +46,11 @@ export interface ChronicleTask {
   dueDate?: string;       // YYYY-MM-DD
   dueTime?: string;       // HH:mm
   recurrence?: string;    // RRULE string e.g. "FREQ=WEEKLY;BYDAY=MO"
-  
+  alert: AlertOffset;
 
   // --- Organisation ---
   location?: string;
-  calendarId?: string;    // links to a ChronicleCalendar
+  listId?: string;        // links to a ChronicleList
   tags: string[];
   linkedNotes: string[];  // wikilink paths e.g. ["Projects/Website"]
   projects: string[];
@@ -103,9 +112,13 @@ export interface ChronicleSettings {
   tasksFolder: string;
   eventsFolder: string;
 
-  // Calendars (stored in settings, not as files)
+  // Calendars — for events (stored in settings, not as files)
   calendars: ChronicleCalendar[];
   defaultCalendarId: string;
+
+  // Lists — for tasks (stored in settings, not as files)
+  lists: ChronicleList[];
+  defaultListId: string;
 
   // Defaults
   defaultTaskStatus: TaskStatus;
@@ -141,16 +154,19 @@ export interface ChronicleSettings {
   defaultCustomFields: { key: string; type: "text" | "number" | "date" | "checkbox" }[];
 }
 
-
-
 export const DEFAULT_SETTINGS: ChronicleSettings = {
   tasksFolder: "Chronicle/Tasks",
   eventsFolder: "Chronicle/Events",
   calendars: [
-    { id: "personal", name: "Personal", color: "blue",   isVisible: true, createdAt: new Date().toISOString() },
-    { id: "work",     name: "Work",     color: "green",  isVisible: true, createdAt: new Date().toISOString() },
+    { id: "personal", name: "Personal", color: "#378ADD", isVisible: true, createdAt: new Date().toISOString() },
+    { id: "work",     name: "Work",     color: "#34C759", isVisible: true, createdAt: new Date().toISOString() },
   ],
   defaultCalendarId: "personal",
+  lists: [
+    { id: "personal", name: "Personal", color: "#378ADD", createdAt: new Date().toISOString() },
+    { id: "work",     name: "Work",     color: "#34C759", createdAt: new Date().toISOString() },
+  ],
+  defaultListId: "personal",
   defaultTaskStatus: "todo",
   defaultTaskPriority: "none",
   defaultAlert: "none",

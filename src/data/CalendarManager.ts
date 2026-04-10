@@ -38,7 +38,8 @@ export class CalendarManager {
   }
 
   delete(id: string): void {
-    this.calendars = this.calendars.filter((c) => c.id !== id);
+    const idx = this.calendars.findIndex((c) => c.id === id);
+    if (idx !== -1) this.calendars.splice(idx, 1);
     this.onUpdate();
   }
 

@@ -4,6 +4,7 @@ import { TaskManager } from "../data/TaskManager";
 import { CalendarManager } from "../data/CalendarManager";
 import { ChronicleEvent, ChronicleTask } from "../types";
 import { EventModal } from "../ui/EventModal";
+import { EventDetailPopup } from "../ui/EventDetailPopup";
 import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./EventFormView";
 import type ChroniclePlugin from "../main";
 
@@ -19,6 +20,7 @@ export class CalendarView extends ItemView {
   private currentDate: Date         = new Date();
   private mode:        CalendarMode = "week";
   private _modeSet                  = false;
+  private _renderVersion            = 0;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -35,7 +37,7 @@ export class CalendarView extends ItemView {
   }
 
   getViewType():    string { return CALENDAR_VIEW_TYPE; }
-  getDisplayText(): string { return "Chronicle Calendar"; }
+  getDisplayText(): string { return "Calendar"; }
   getIcon():        string { return "calendar"; }
 
   async onOpen() {
@@ -49,6 +51,9 @@ export class CalendarView extends ItemView {
         const inTasks  = file.path.startsWith(this.taskManager["tasksFolder"]);
         if (inEvents || inTasks) this.render();
       })
+    );
+    this.registerEvent(
+      (this.app.workspace as any).on("chronicle:settings-changed", () => this.render())
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
@@ -67,6 +72,7 @@ export class CalendarView extends ItemView {
   }
 
   async render() {
+    const version = ++this._renderVersion;
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass("chronicle-cal-app");
@@ -83,6 +89,8 @@ export class CalendarView extends ItemView {
     const rangeStart = this.getRangeStart();
     const rangeEnd   = this.getRangeEnd();
     const events     = await this.eventManager.getInRangeWithRecurrence(rangeStart, rangeEnd);
+
+    if (this._renderVersion !== version) return;
 
     const layout  = container.createDiv("chronicle-cal-layout");
     const sidebar = layout.createDiv("chronicle-cal-sidebar");
@@ -146,7 +154,7 @@ private getRangeStart(): string {
     });
     newEventBtn.addEventListener("click", () => {
       new EventModal(
-        this.app, this.eventManager, this.calendarManager,
+        this.app, this.eventManager, this.calendarManager, this.taskManager,
         undefined, () => this.render(), (e) => this.openEventFullPage(e)
       ).open();
     });
@@ -347,7 +355,7 @@ private getRangeStart(): string {
           pill.setText(event.title);
           pill.addEventListener("click", (e) => {
             e.stopPropagation();
-            new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
+            new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
           });
         });
 
@@ -565,7 +573,7 @@ private getRangeStart(): string {
     } as ChronicleEvent;
 
     new EventModal(
-      this.app, this.eventManager, this.calendarManager,
+      this.app, this.eventManager, this.calendarManager, this.taskManager,
       prefill, () => this.render(), (e) => this.openEventFullPage(e ?? prefill)
     ).open();
   }
@@ -580,7 +588,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     editItem.setText("Edit event");
     editItem.addEventListener("click", () => {
       menu.remove();
-      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
+      new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
     });
 
     const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
@@ -629,7 +637,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
 
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
-      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
+      new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
     });
 
     pill.addEventListener("contextmenu", (e) => {
@@ -648,7 +656,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     pill.style.color           = color;
     pill.setText(event.title);
     pill.addEventListener("click", () =>
-      new EventModal(this.app, this.eventManager, this.calendarManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open()
+      new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open()
     );
 
     pill.addEventListener("contextmenu", (e) => {

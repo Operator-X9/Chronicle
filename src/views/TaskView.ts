@@ -1,37 +1,35 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { TaskModal } from "../ui/TaskModal";
+import { TaskDetailPopup } from "../ui/TaskDetailPopup";
 import type ChroniclePlugin from "../main";
 import { ChronicleTask } from "../types";
 import { TaskManager } from "../data/TaskManager";
-import { CalendarManager } from "../data/CalendarManager";
+import { ListManager } from "../data/ListManager";
 import { TaskFormView, TASK_FORM_VIEW_TYPE } from "./TaskFormView";
-import { EventManager } from "../data/EventManager";
 
 export const TASK_VIEW_TYPE = "chronicle-task-view";
 
 export class TaskView extends ItemView {
   private taskManager: TaskManager;
-  private calendarManager: CalendarManager;
-  private eventManager: EventManager;
+  private listManager: ListManager;
   private plugin: ChroniclePlugin;
   private currentListId: string = "today";
+  private _renderVersion = 0;
 
   constructor(
     leaf: WorkspaceLeaf,
     taskManager: TaskManager,
-    calendarManager: CalendarManager,
-    eventManager: EventManager,
+    listManager: ListManager,
     plugin: ChroniclePlugin
   ) {
     super(leaf);
-    this.taskManager    = taskManager;
-    this.calendarManager = calendarManager;
-    this.eventManager   = eventManager;
-    this.plugin         = plugin;
+    this.taskManager = taskManager;
+    this.listManager = listManager;
+    this.plugin      = plugin;
   }
 
   getViewType(): string { return TASK_VIEW_TYPE; }
-  getDisplayText(): string { return "Chronicle"; }
+  getDisplayText(): string { return "Reminders"; }
   getIcon(): string { return "check-circle"; }
 
   async onOpen() {
@@ -43,6 +41,9 @@ export class TaskView extends ItemView {
           this.render();
         }
       })
+    );
+    this.registerEvent(
+      (this.app.workspace as any).on("chronicle:settings-changed", () => this.render())
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
@@ -61,6 +62,7 @@ export class TaskView extends ItemView {
   }
 
   async render() {
+    const version = ++this._renderVersion;
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass("chronicle-app");
@@ -70,7 +72,9 @@ export class TaskView extends ItemView {
     const scheduled = await this.taskManager.getScheduled();
     const flagged   = await this.taskManager.getFlagged();
     const overdue   = await this.taskManager.getOverdue();
-    const calendars = this.calendarManager.getAll();
+    const lists     = this.listManager.getAll();
+
+    if (this._renderVersion !== version) return;
 
     const layout  = container.createDiv("chronicle-layout");
     const sidebar = layout.createDiv("chronicle-sidebar");
@@ -124,19 +128,19 @@ export class TaskView extends ItemView {
     const listsSection = sidebar.createDiv("chronicle-lists-section");
     listsSection.createDiv("chronicle-section-label").setText("My Lists");
 
-    for (const cal of calendars) {
+    for (const list of lists) {
       const row = listsSection.createDiv("chronicle-list-row");
-      if (cal.id === this.currentListId) row.addClass("active");
+      if (list.id === this.currentListId) row.addClass("active");
 
       const dot = row.createDiv("chronicle-list-dot");
-      dot.style.backgroundColor = CalendarManager.colorToHex(cal.color);
+      dot.style.backgroundColor = list.color;
 
-      row.createDiv("chronicle-list-name").setText(cal.name);
+      row.createDiv("chronicle-list-name").setText(list.name);
 
-      const calCount = all.filter(t => t.calendarId === cal.id && t.status !== "done").length;
-      if (calCount > 0) row.createDiv("chronicle-list-count").setText(String(calCount));
+      const listCount = all.filter(t => t.listId === list.id && t.status !== "done").length;
+      if (listCount > 0) row.createDiv("chronicle-list-count").setText(String(listCount));
 
-      row.addEventListener("click", () => { this.currentListId = cal.id; this.render(); });
+      row.addEventListener("click", () => { this.currentListId = list.id; this.render(); });
     }
 
     // ── Main panel ────────────────────────────────────────────────────────
@@ -184,14 +188,10 @@ export class TaskView extends ItemView {
           break;
       }
     } else {
-      const cal = this.calendarManager.getById(this.currentListId);
-      titleEl.setText(cal?.name ?? "List");
-      titleEl.style.color = cal
-        ? CalendarManager.colorToHex(cal.color)
-        : "var(--text-normal)";
-      tasks = all.filter(
-        t => t.calendarId === this.currentListId && t.status !== "done"
-      );
+      const list = this.listManager.getById(this.currentListId);
+      titleEl.setText(list?.name ?? "List");
+      titleEl.style.color = list ? list.color : "var(--text-normal)";
+      tasks = all.filter(t => t.listId === this.currentListId && t.status !== "done");
     }
 
     const isCompleted = this.currentListId === "completed";
@@ -267,13 +267,19 @@ export class TaskView extends ItemView {
 
     // Content
     const content = row.createDiv("chronicle-task-content");
-    if (!isArchive) content.addEventListener("click", () => this.openTaskForm(task));
+    if (!isArchive) content.addEventListener("click", () => {
+      new TaskDetailPopup(
+        this.app, task, this.listManager,
+        this.plugin.settings.timeFormat,
+        () => this.openTaskForm(task)
+      ).open();
+    });
 
     const titleEl = content.createDiv("chronicle-task-title");
     titleEl.setText(task.title);
     if (isDone) titleEl.addClass("done");
 
-    // Meta
+    // Meta row
     const todayStr = new Date().toISOString().split("T")[0];
     const metaRow  = content.createDiv("chronicle-task-meta");
 
@@ -284,51 +290,44 @@ export class TaskView extends ItemView {
           month: "short", day: "numeric", year: "numeric"
         })
       );
-    } else if (task.dueDate || task.calendarId) {
+    } else if (task.dueDate || task.listId) {
       if (task.dueDate) {
         const metaDate = metaRow.createSpan("chronicle-task-date");
         metaDate.setText(this.formatDate(task.dueDate));
         if (task.dueDate < todayStr) metaDate.addClass("overdue");
       }
-      if (task.calendarId) {
-        const cal = this.calendarManager.getById(task.calendarId);
-        if (cal) {
-          const calDot = metaRow.createSpan("chronicle-task-cal-dot");
-          calDot.style.backgroundColor = CalendarManager.colorToHex(cal.color);
-          metaRow.createSpan("chronicle-task-cal-name").setText(cal.name);
+      if (task.listId) {
+        const list = this.listManager.getById(task.listId);
+        if (list) {
+          const listDot = metaRow.createSpan("chronicle-task-cal-dot");
+          listDot.style.backgroundColor = list.color;
+          metaRow.createSpan("chronicle-task-cal-name").setText(list.name);
         }
       }
     }
 
-    // Priority flag (non-archive only)
+    // Priority flag
     if (!isArchive && task.priority === "high") {
       row.createDiv("chronicle-flag").setText("⚑");
     }
 
-    // Archive: Restore + Delete buttons
+    // Archive actions
     if (isArchive) {
       const actions = row.createDiv("chronicle-archive-actions");
-
-      const restoreBtn = actions.createEl("button", {
-        cls: "chronicle-archive-btn", text: "Restore"
-      });
+      const restoreBtn = actions.createEl("button", { cls: "chronicle-archive-btn", text: "Restore" });
       restoreBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await this.taskManager.update({ ...task, status: "todo", completedAt: undefined });
       });
-
-      const deleteBtn = actions.createEl("button", {
-        cls: "chronicle-archive-btn chronicle-archive-btn-delete", text: "Delete"
-      });
+      const deleteBtn = actions.createEl("button", { cls: "chronicle-archive-btn chronicle-archive-btn-delete", text: "Delete" });
       deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await this.taskManager.delete(task.id);
       });
-
       return;
     }
 
-    // Right-click context menu (non-archive)
+    // Right-click context menu
     row.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       const menu = document.createElement("div");
@@ -342,10 +341,7 @@ export class TaskView extends ItemView {
 
       const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
       deleteItem.setText("Delete task");
-      deleteItem.addEventListener("click", async () => {
-        menu.remove();
-        await this.taskManager.delete(task.id);
-      });
+      deleteItem.addEventListener("click", async () => { menu.remove(); await this.taskManager.delete(task.id); });
 
       const cancelItem = menu.createDiv("chronicle-context-item");
       cancelItem.setText("Cancel");
@@ -362,11 +358,7 @@ export class TaskView extends ItemView {
     const weekAgo  = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 
     if (this.currentListId === "completed") {
-      const groups: Record<string, ChronicleTask[]> = {
-        "Today":     [],
-        "This week": [],
-        "Earlier":   [],
-      };
+      const groups: Record<string, ChronicleTask[]> = { "Today": [], "This week": [], "Earlier": [] };
       for (const task of tasks) {
         const d = task.completedAt?.split("T")[0] ?? "";
         if (d === today)       groups["Today"].push(task);
@@ -377,13 +369,8 @@ export class TaskView extends ItemView {
     }
 
     const groups: Record<string, ChronicleTask[]> = {
-      "Overdue":   [],
-      "Today":     [],
-      "This week": [],
-      "Later":     [],
-      "No date":   [],
+      "Overdue": [], "Today": [], "This week": [], "Later": [], "No date": [],
     };
-
     for (const task of tasks) {
       if (task.status === "done") continue;
       if (!task.dueDate)            { groups["No date"].push(task);   continue; }
@@ -392,7 +379,6 @@ export class TaskView extends ItemView {
       if (task.dueDate <= nextWeek) { groups["This week"].push(task); continue; }
       groups["Later"].push(task);
     }
-
     return groups;
   }
 
@@ -401,16 +387,14 @@ export class TaskView extends ItemView {
     const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
     if (dateStr === today)    return "Today";
     if (dateStr === tomorrow) return "Tomorrow";
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
-      month: "short", day: "numeric"
-    });
+    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
   async openTaskForm(task?: ChronicleTask) {
     new TaskModal(
       this.app,
       this.taskManager,
-      this.calendarManager,
+      this.listManager,
       task,
       undefined,
       (t) => this.openTaskFullPage(t),

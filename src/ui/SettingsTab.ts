@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type ChroniclePlugin from "../main";
-import { CalendarColor, ChronicleCalendar, TaskStatus, TaskPriority, AlertOffset } from "../types";
+import { CalendarColor, ChronicleCalendar, ChronicleList, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { CalendarManager } from "../data/CalendarManager";
 
 export class ChronicleSettingsTab extends PluginSettingTab {
@@ -316,6 +316,44 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       );
   }
 
+  private renderListRow(el: HTMLElement, list: ChronicleList, isOnly: boolean) {
+    const setting = new Setting(el);
+
+    const dot = setting.nameEl.createDiv("cs-cal-dot");
+    dot.style.backgroundColor = list.color;
+    setting.nameEl.createSpan({ text: list.name });
+
+    setting
+      .addColorPicker(picker => {
+        picker.setValue(list.color);
+        picker.onChange(async (hex) => {
+          dot.style.backgroundColor = hex;
+          this.plugin.listManager.update(list.id, { color: hex });
+          await this.plugin.saveSettings();
+        });
+      })
+      .addText(text => text
+        .setValue(list.name)
+        .setPlaceholder("List name")
+        .onChange(async (value) => {
+          if (!value.trim()) return;
+          this.plugin.listManager.update(list.id, { name: value.trim() });
+          await this.plugin.saveSettings();
+        })
+      )
+      .addButton(btn => btn
+        .setIcon("trash")
+        .setTooltip("Delete list")
+        .setDisabled(isOnly)
+        .onClick(async () => {
+          this.plugin.listManager.delete(list.id);
+          await this.plugin.saveSettings();
+          new Notice(`List "${list.name}" deleted`);
+          this.display();
+        })
+      );
+  }
+
   // ── Reminders ─────────────────────────────────────────────────────────────
 
   private renderReminders(el: HTMLElement) {
@@ -361,19 +399,49 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       );
 
     new Setting(el)
-      .setName("Default calendar")
-      .setDesc("Calendar assigned to new tasks by default.")
+      .setName("Default list")
+      .setDesc("List assigned to new tasks by default.")
       .addDropdown(drop => {
         drop.addOption("", "None");
-        for (const cal of this.plugin.calendarManager.getAll()) {
-          drop.addOption(cal.id, cal.name);
+        for (const list of this.plugin.listManager.getAll()) {
+          drop.addOption(list.id, list.name);
         }
-        drop.setValue(this.plugin.settings.defaultCalendarId ?? "");
+        drop.setValue(this.plugin.settings.defaultListId ?? "");
         drop.onChange(async (value) => {
-          this.plugin.settings.defaultCalendarId = value;
+          this.plugin.settings.defaultListId = value;
           await this.plugin.saveSettings();
         });
       });
+
+    this.divider(el);
+    this.subHeader(el, "My Lists");
+    el.createDiv("cs-desc").setText("Add, rename, recolor, or delete lists.");
+
+    for (const list of this.plugin.listManager.getAll()) {
+      this.renderListRow(el, list, this.plugin.listManager.getAll().length === 1);
+    }
+
+    this.divider(el);
+
+    const addListRow = el.createDiv("cs-add-row");
+    const listNameInput = addListRow.createEl("input", {
+      type: "text",
+      cls: "cs-text-input",
+      placeholder: "New list name",
+    });
+
+    const listColorPicker = addListRow.createEl("input", { type: "color", cls: "cs-color-picker" });
+    listColorPicker.value = "#378ADD";
+
+    const addListBtn = addListRow.createEl("button", { cls: "cs-btn-primary", text: "Add list" });
+    addListBtn.addEventListener("click", async () => {
+      const name = listNameInput.value.trim();
+      if (!name) { listNameInput.focus(); return; }
+      this.plugin.listManager.create(name, listColorPicker.value);
+      await this.plugin.saveSettings();
+      new Notice(`List "${name}" created`);
+      this.display();
+    });
 
     this.divider(el);
     this.subHeader(el, "Smart list visibility");

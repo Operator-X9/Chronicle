@@ -1,11 +1,13 @@
 import { App, Modal } from "obsidian";
 import { EventManager } from "../data/EventManager";
 import { CalendarManager } from "../data/CalendarManager";
+import { TaskManager } from "../data/TaskManager";
 import { ChronicleEvent, AlertOffset } from "../types";
 
 export class EventModal extends Modal {
   private eventManager: EventManager;
   private calendarManager: CalendarManager;
+  private taskManager: TaskManager;
   private editingEvent: ChronicleEvent | null;
   private onSave?: () => void;
   private onExpand?: (event?: ChronicleEvent) => void;
@@ -14,6 +16,7 @@ export class EventModal extends Modal {
     app: App,
     eventManager: EventManager,
     calendarManager: CalendarManager,
+    taskManager: TaskManager,
     editingEvent?: ChronicleEvent,
     onSave?: () => void,
     onExpand?: (event?: ChronicleEvent) => void
@@ -21,18 +24,23 @@ export class EventModal extends Modal {
     super(app);
     this.eventManager    = eventManager;
     this.calendarManager = calendarManager;
+    this.taskManager     = taskManager;
     this.editingEvent    = editingEvent ?? null;
     this.onSave          = onSave;
     this.onExpand        = onExpand;
   }
 
-  onOpen() {
+  async onOpen() {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("chronicle-event-modal");
 
     const e         = this.editingEvent;
     const calendars = this.calendarManager.getAll();
+
+    // Fetch all tasks upfront for linked-tasks UI
+    const allTasks = await this.taskManager.getAll();
+    let linkedIds: string[] = [...(e?.linkedTaskIds ?? [])];
 
     // ── Header ──────────────────────────────────────────────────────────
     const header = contentEl.createDiv("cem-header");
@@ -164,11 +172,72 @@ export class EventModal extends Modal {
     });
     tagsInput.value = e?.tags?.join(", ") ?? "";
 
-    const defaultAlert = this.plugin?.settings?.defaultAlert ?? "none";
-    for (const a of alerts) {
-      const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
-      if (e?.alert === a.value) opt.selected = true;
-    }
+    // ── Linked tasks ─────────────────────────────────────────────────────
+    const linkedField = this.field(form, "Linked tasks");
+    const linkedList  = linkedField.createDiv("ctl-list");
+
+    const renderLinkedList = () => {
+      linkedList.empty();
+      const items = allTasks.filter(t => linkedIds.includes(t.id));
+      if (items.length === 0) {
+        linkedList.createDiv("ctl-empty").setText("No linked tasks");
+      }
+      for (const task of items) {
+        const row = linkedList.createDiv("ctl-item");
+        row.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
+        row.createSpan({ cls: "ctl-title" }).setText(task.title);
+        const unlinkBtn = row.createEl("button", { cls: "ctl-unlink", text: "×" });
+        unlinkBtn.addEventListener("click", () => {
+          linkedIds = linkedIds.filter(id => id !== task.id);
+          renderLinkedList();
+        });
+      }
+    };
+    renderLinkedList();
+
+    // Search to link existing tasks
+    const searchWrap    = linkedField.createDiv("ctl-search-wrap");
+    const searchInput   = searchWrap.createEl("input", {
+      type: "text", cls: "cf-input ctl-search",
+      placeholder: "Search tasks to link…"
+    });
+    const searchResults = searchWrap.createDiv("ctl-results");
+    searchResults.style.display = "none";
+
+    const closeSearch = () => {
+      searchResults.style.display = "none";
+      searchResults.empty();
+    };
+
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.toLowerCase().trim();
+      searchResults.empty();
+      if (!q) { closeSearch(); return; }
+
+      const matches = allTasks
+        .filter(t => !linkedIds.includes(t.id) && t.title.toLowerCase().includes(q))
+        .slice(0, 6);
+
+      if (matches.length === 0) { closeSearch(); return; }
+      searchResults.style.display = "";
+      for (const task of matches) {
+        const item = searchResults.createDiv("ctl-result-item");
+        item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
+        item.createSpan({ cls: "ctl-result-title" }).setText(task.title);
+        item.addEventListener("mousedown", (ev) => {
+          ev.preventDefault(); // keep focus on input so blur doesn't fire first
+          linkedIds.push(task.id);
+          searchInput.value = "";
+          closeSearch();
+          renderLinkedList();
+        });
+      }
+    });
+
+    searchInput.addEventListener("blur", () => {
+      // Small delay so mousedown can fire first
+      setTimeout(closeSearch, 150);
+    });
 
     // ── Footer (always visible, outside scroll area) ───────────────────
     const footer    = contentEl.createDiv("cem-footer");
@@ -209,9 +278,10 @@ export class EventModal extends Modal {
         recurrence:  recSelect.value || undefined,
         calendarId:  calSelect.value || undefined,
         alert:       alertSelect.value as AlertOffset,
-        tags:              e?.tags ?? [],
-        notes:       e?.notes,
-        linkedTaskIds:      e?.linkedTaskIds ?? [],
+        tags:               tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.tags ?? []),
+        notes:              e?.notes,
+        linkedNotes:        e?.linkedNotes ?? [],
+        linkedTaskIds:      linkedIds,
         completedInstances: e?.completedInstances ?? [],
       };
 
@@ -226,9 +296,9 @@ export class EventModal extends Modal {
     };
 
     saveBtn.addEventListener("click", handleSave);
-    titleInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") handleSave();
-      if (e.key === "Escape") this.close();
+    titleInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") handleSave();
+      if (ev.key === "Escape") this.close();
     });
   }
 
@@ -240,11 +310,5 @@ export class EventModal extends Modal {
 
   onClose() {
     this.contentEl.empty();
-  }
-
-  private cemField(parent: HTMLElement, label: string): HTMLElement {
-    const wrap = parent.createDiv("cf-field");
-    wrap.createDiv("cf-label").setText(label);
-    return wrap;
   }
 }

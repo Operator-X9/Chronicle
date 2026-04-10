@@ -1,34 +1,32 @@
-import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { App, Modal, Notice } from "obsidian";
+import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { TaskManager } from "../data/TaskManager";
-import { CalendarManager } from "../data/CalendarManager";
-import { ChronicleTask, TaskStatus, TaskPriority } from "../types";
+import { ListManager } from "../data/ListManager";
 
 export class TaskModal extends Modal {
   private taskManager: TaskManager;
-  private calendarManager: CalendarManager;
+  private listManager: ListManager;
   private editingTask: ChronicleTask | null;
   private onSave?: () => void;
   private onExpand?: (task?: ChronicleTask) => void;
-
   private plugin: any;
 
   constructor(
     app: App,
     taskManager: TaskManager,
-    calendarManager: CalendarManager,
+    listManager: ListManager,
     editingTask?: ChronicleTask,
     onSave?: () => void,
     onExpand?: (task?: ChronicleTask) => void,
     plugin?: any
   ) {
     super(app);
-    this.taskManager    = taskManager;
-    this.calendarManager = calendarManager;
-    this.editingTask    = editingTask ?? null;
-    this.onSave         = onSave;
-    this.onExpand       = onExpand;
-    this.plugin         = plugin;
+    this.taskManager = taskManager;
+    this.listManager = listManager;
+    this.editingTask = editingTask ?? null;
+    this.onSave      = onSave;
+    this.onExpand    = onExpand;
+    this.plugin      = plugin;
   }
 
   onOpen() {
@@ -36,8 +34,8 @@ export class TaskModal extends Modal {
     contentEl.empty();
     contentEl.addClass("chronicle-event-modal");
 
-    const t         = this.editingTask;
-    const calendars = this.calendarManager.getAll();
+    const t     = this.editingTask;
+    const lists = this.listManager.getAll();
 
     // ── Header ──────────────────────────────────────────────────────────
     const header = contentEl.createDiv("cem-header");
@@ -46,10 +44,7 @@ export class TaskModal extends Modal {
     const expandBtn = header.createEl("button", { cls: "cf-btn-ghost cem-expand-btn" });
     expandBtn.title = "Open as full page";
     expandBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-    expandBtn.addEventListener("click", () => {
-      this.close();
-      this.onExpand?.(t ?? undefined);
-    });
+    expandBtn.addEventListener("click", () => { this.close(); this.onExpand?.(t ?? undefined); });
 
     // ── Form ─────────────────────────────────────────────────────────────
     const form = contentEl.createDiv("cem-form");
@@ -98,26 +93,20 @@ export class TaskModal extends Modal {
 
     // Due date + time
     const row2 = form.createDiv("cf-row");
-
-    const dueDateInput = this.field(row2, "Date").createEl("input", {
-      type: "date", cls: "cf-input"
-    });
+    const dueDateInput = this.field(row2, "Date").createEl("input", { type: "date", cls: "cf-input" });
     dueDateInput.value = t?.dueDate ?? "";
-
-    const dueTimeInput = this.field(row2, "Time").createEl("input", {
-      type: "time", cls: "cf-input"
-    });
+    const dueTimeInput = this.field(row2, "Time").createEl("input", { type: "time", cls: "cf-input" });
     dueTimeInput.value = t?.dueTime ?? "";
 
-    // Recurrence
+    // Repeat
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
     const recurrences = [
-      { value: "",                                    label: "Never" },
-      { value: "FREQ=DAILY",                          label: "Every day" },
-      { value: "FREQ=WEEKLY",                         label: "Every week" },
-      { value: "FREQ=MONTHLY",                        label: "Every month" },
-      { value: "FREQ=YEARLY",                         label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",   label: "Weekdays" },
+      { value: "",                                   label: "Never" },
+      { value: "FREQ=DAILY",                         label: "Every day" },
+      { value: "FREQ=WEEKLY",                        label: "Every week" },
+      { value: "FREQ=MONTHLY",                       label: "Every month" },
+      { value: "FREQ=YEARLY",                        label: "Every year" },
+      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",  label: "Weekdays" },
     ];
     for (const r of recurrences) {
       const opt = recSelect.createEl("option", { value: r.value, text: r.label });
@@ -138,46 +127,38 @@ export class TaskModal extends Modal {
       { value: "1day",    label: "1 day before" },
       { value: "2days",   label: "2 days before" },
       { value: "1week",   label: "1 week before" },
-    ]; 
-
-    // Calendar
-    const calSelect = this.field(form, "Calendar").createEl("select", { cls: "cf-select" });
-    const defaultCal = this.plugin?.settings?.defaultCalendarId ?? "";
-    calSelect.createEl("option", { value: "", text: "None" });
-    for (const cal of calendars) {
-      const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
-      if (t ? t.calendarId === cal.id : cal.id === defaultCal) opt.selected = true;
-    }
-    
-    const updateCalColor = () => {
-      const cal = this.calendarManager.getById(calSelect.value);
-      calSelect.style.borderLeftColor = cal ? CalendarManager.colorToHex(cal.color) : "transparent";
-      calSelect.style.borderLeftWidth = "4px";
-      calSelect.style.borderLeftStyle = "solid";
-    };
-    calSelect.addEventListener("change", updateCalColor);
-    updateCalColor();
-
-    // Tags
-    const tagsInput = this.field(form, "Tags").createEl("input", {
-      type: "text", cls: "cf-input",
-      placeholder: "work, personal  (comma separated)"
-    });
-    tagsInput.value = t?.tags?.join(", ") ?? "";
-
+    ];
     const defaultAlert = this.plugin?.settings?.defaultAlert ?? "none";
     for (const a of taskAlerts) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if (t ? t.alert === a.value : a.value === defaultAlert) opt.selected = true;
     }
 
-    if (!t) {
-      const noneOpt = alertSelect.querySelector('option[value="none"]') as HTMLOptionElement;
-      if (noneOpt) noneOpt.selected = true;
+    // List
+    const listSelect = this.field(form, "List").createEl("select", { cls: "cf-select" });
+    const defaultListId = this.plugin?.settings?.defaultListId ?? "";
+    listSelect.createEl("option", { value: "", text: "None" });
+    for (const list of lists) {
+      const opt = listSelect.createEl("option", { value: list.id, text: list.name });
+      if (t ? t.listId === list.id : list.id === defaultListId) opt.selected = true;
     }
-    
+    const updateListColor = () => {
+      const list = this.listManager.getById(listSelect.value);
+      listSelect.style.borderLeftColor = list ? list.color : "transparent";
+      listSelect.style.borderLeftWidth = "4px";
+      listSelect.style.borderLeftStyle = "solid";
+    };
+    listSelect.addEventListener("change", updateListColor);
+    updateListColor();
+
+    // Tags
+    const tagsInput = this.field(form, "Tags").createEl("input", {
+      type: "text", cls: "cf-input", placeholder: "work, personal  (comma separated)"
+    });
+    tagsInput.value = t?.tags?.join(", ") ?? "";
+
     // ── Footer ────────────────────────────────────────────────────────────
-    const footer = contentEl.createDiv("cem-footer");
+    const footer    = contentEl.createDiv("cem-footer");
     const cancelBtn = footer.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
 
     if (t && t.id) {
@@ -198,13 +179,8 @@ export class TaskModal extends Modal {
 
     const handleSave = async () => {
       const title = titleInput.value.trim();
-      if (!title) {
-        titleInput.focus();
-        titleInput.classList.add("cf-error");
-        return;
-      }
+      if (!title) { titleInput.focus(); titleInput.classList.add("cf-error"); return; }
 
-      // Duplicate check (new tasks only)
       if (!t?.id) {
         const existing = await this.taskManager.getAll();
         const duplicate = existing.find(e => e.title.toLowerCase() === title.toLowerCase());
@@ -218,23 +194,21 @@ export class TaskModal extends Modal {
 
       const taskData = {
         title,
-        status:      statusSelect.value as TaskStatus,
-        priority:    prioritySelect.value as TaskPriority,
-        dueDate:     dueDateInput.value || undefined,
-        dueTime:     dueTimeInput.value || undefined,
-        calendarId:  calSelect.value || undefined,
-        recurrence:  recSelect.value || undefined,
-        notes:       t?.notes,
-        location:    locationInput.value || undefined,
-        tags:        tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (t?.tags ?? []),
-        alert:       alertSelect.value as AlertOffset,
-        tags:              t?.tags ?? [],
-        contexts:  [],
-        linkedNotes:       t?.linkedNotes ?? [],
-        projects:          t?.projects ?? [],
-        timeEstimate:      t?.timeEstimate,
-        timeEntries:       t?.timeEntries ?? [],
-        customFields:      t?.customFields ?? [],
+        status:             statusSelect.value as TaskStatus,
+        priority:           prioritySelect.value as TaskPriority,
+        dueDate:            dueDateInput.value || undefined,
+        dueTime:            dueTimeInput.value || undefined,
+        listId:             listSelect.value || undefined,
+        recurrence:         recSelect.value || undefined,
+        alert:              alertSelect.value as AlertOffset,
+        location:           locationInput.value || undefined,
+        tags:               tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (t?.tags ?? []),
+        notes:              t?.notes,
+        linkedNotes:        t?.linkedNotes ?? [],
+        projects:           t?.projects ?? [],
+        timeEstimate:       t?.timeEstimate,
+        timeEntries:        t?.timeEntries ?? [],
+        customFields:       t?.customFields ?? [],
         completedInstances: t?.completedInstances ?? [],
       };
 
