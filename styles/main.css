@@ -750,21 +750,20 @@
 
 .chronicle-new-reminder-btn {
   width: 100%;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+  background: var(--interactive-normal);
+  color: var(--text-normal);
   border: none;
-  border-radius: var(--radius-l);
-  padding: 10px;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: var(--radius-s);
+  padding: 6px 12px;
+  font-size: var(--font-ui-small);
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.15s, transform 0.1s;
   margin-bottom: 4px;
 }
 
-.chronicle-new-reminder-btn:hover  { opacity: 0.88; }
-.chronicle-new-reminder-btn:active { transform: scale(0.97); }
+.chronicle-new-reminder-btn:hover  { background: var(--interactive-hover); }
+.chronicle-new-reminder-btn:active { background: var(--interactive-accent); color: var(--text-on-accent); }
 
 /* ══════════════════════════════════════════════════════════════════════════
    CALENDAR VIEW
