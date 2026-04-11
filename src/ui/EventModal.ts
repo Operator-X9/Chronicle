@@ -3,6 +3,7 @@ import { EventManager } from "../data/EventManager";
 import { CalendarManager } from "../data/CalendarManager";
 import { TaskManager } from "../data/TaskManager";
 import { ChronicleEvent, AlertOffset } from "../types";
+import { buildTagField } from "./tagField";
 
 export class EventModal extends Modal {
   private eventManager: EventManager;
@@ -166,11 +167,7 @@ export class EventModal extends Modal {
     updateCalColor();
 
     // Tags
-    const tagsInput = this.field(form, "Tags").createEl("input", {
-      type: "text", cls: "cf-input",
-      placeholder: "work, personal  (comma separated)"
-    });
-    tagsInput.value = e?.tags?.join(", ") ?? "";
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), e?.tags ?? []);
 
     // ── Linked tasks ─────────────────────────────────────────────────────
     const linkedField = this.field(form, "Linked tasks");
@@ -278,7 +275,7 @@ export class EventModal extends Modal {
         recurrence:  recSelect.value || undefined,
         calendarId:  calSelect.value || undefined,
         alert:       alertSelect.value as AlertOffset,
-        tags:               tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.tags ?? []),
+        tags:               tagField.getTags(),
         notes:              e?.notes,
         linkedNotes:        e?.linkedNotes ?? [],
         linkedTaskIds:      linkedIds,

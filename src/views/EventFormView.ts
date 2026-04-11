@@ -3,6 +3,7 @@ import { EventManager } from "../data/EventManager";
 import { CalendarManager } from "../data/CalendarManager";
 import { TaskManager } from "../data/TaskManager";
 import { ChronicleEvent, AlertOffset } from "../types";
+import { buildTagField } from "../ui/tagField";
 
 export const EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
 
@@ -169,11 +170,7 @@ export class EventFormView extends ItemView {
     updateCalColor();
 
     // Tags
-    const tagsInput = this.field(form, "Tags").createEl("input", {
-      type: "text", cls: "cf-input",
-      placeholder: "work, personal  (comma separated)"
-    });
-    tagsInput.value = e?.tags?.join(", ") ?? "";
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), e?.tags ?? []);
 
     // Linked notes
     const linkedInput = this.field(form, "Linked notes").createEl("input", {
@@ -263,7 +260,7 @@ export class EventFormView extends ItemView {
         title,
         status:             "todo",
         priority:           "none",
-        calendarId:         calSelect.value || undefined,
+        alert:              "none",
         tags:               [],
         linkedNotes:        [],
         projects:           [],
@@ -310,7 +307,7 @@ export class EventFormView extends ItemView {
         alert:       alertSelect.value as AlertOffset,
         notes:       notesInput.value || undefined,
         linkedNotes: linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.linkedNotes ?? []),
-        tags:        tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.tags ?? []),
+        tags:        tagField.getTags(),
         linkedTaskIds:      linkedIds,
         completedInstances: e?.completedInstances ?? [],
       };

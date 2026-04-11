@@ -2,6 +2,7 @@ import { App, Modal, Notice } from "obsidian";
 import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { TaskManager } from "../data/TaskManager";
 import { ListManager } from "../data/ListManager";
+import { buildTagField } from "./tagField";
 
 export class TaskModal extends Modal {
   private taskManager: TaskManager;
@@ -152,10 +153,7 @@ export class TaskModal extends Modal {
     updateListColor();
 
     // Tags
-    const tagsInput = this.field(form, "Tags").createEl("input", {
-      type: "text", cls: "cf-input", placeholder: "work, personal  (comma separated)"
-    });
-    tagsInput.value = t?.tags?.join(", ") ?? "";
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), t?.tags ?? []);
 
     // ── Footer ────────────────────────────────────────────────────────────
     const footer    = contentEl.createDiv("cem-footer");
@@ -202,7 +200,7 @@ export class TaskModal extends Modal {
         recurrence:         recSelect.value || undefined,
         alert:              alertSelect.value as AlertOffset,
         location:           locationInput.value || undefined,
-        tags:               tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : (t?.tags ?? []),
+        tags:               tagField.getTags(),
         notes:              t?.notes,
         linkedNotes:        t?.linkedNotes ?? [],
         projects:           t?.projects ?? [],

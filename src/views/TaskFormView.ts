@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
 import { TaskManager } from "../data/TaskManager";
 import { ListManager } from "../data/ListManager";
+import { buildTagField } from "../ui/tagField";
 
 export const TASK_FORM_VIEW_TYPE = "chronicle-task-form";
 
@@ -152,11 +153,7 @@ export class TaskFormView extends ItemView {
     updateListColor();
 
     // Tags
-    const tagsInput = this.field(form, "Tags").createEl("input", {
-      type: "text", cls: "cf-input",
-      placeholder: "work, personal  (comma separated)"
-    });
-    tagsInput.value = t?.tags.join(", ") ?? "";
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), t?.tags ?? []);
 
     // Linked notes
     const linkedInput = this.field(form, "Linked notes").createEl("input", {
@@ -201,7 +198,7 @@ export class TaskFormView extends ItemView {
         listId:             listSelect.value || undefined,
         recurrence:         recSelect.value || undefined,
         alert:              alertSelect.value as AlertOffset,
-        tags:               tagsInput.value ? tagsInput.value.split(",").map(s => s.trim()).filter(Boolean) : [],
+        tags:               tagField.getTags(),
         linkedNotes:        linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : [],
         projects:           t?.projects ?? [],
         timeEntries:        t?.timeEntries ?? [],
