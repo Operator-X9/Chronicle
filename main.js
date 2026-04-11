@@ -168,15 +168,6 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
         });
       }
     );
-    new import_obsidian.Setting(el).setName("Obsidian in-app toast").setDesc("Show a banner inside Obsidian when an alert fires.").addToggle(
-      (t) => {
-        var _a;
-        return t.setValue((_a = this.plugin.settings.notifObsidian) != null ? _a : true).onChange(async (value) => {
-          this.plugin.settings.notifObsidian = value;
-          await this.plugin.saveSettings();
-        });
-      }
-    );
     new import_obsidian.Setting(el).setName("Sound").setDesc("Play a chime when an alert fires.").addToggle(
       (t) => {
         var _a;
@@ -504,11 +495,11 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/data/AlertManager.ts
-var import_obsidian2 = require("obsidian");
 var AlertManager = class {
   constructor(app, reminderManager, eventManager, getSettings) {
     this.intervalId = null;
     this.firedAlerts = /* @__PURE__ */ new Set();
+    this.isChecking = false;
     // Store handler references so we can remove them in stop()
     this.onChanged = null;
     this.onCreate = null;
@@ -555,6 +546,15 @@ var AlertManager = class {
     console.log("[Chronicle] AlertManager stopped");
   }
   async check() {
+    if (this.isChecking) return;
+    this.isChecking = true;
+    try {
+      await this._check();
+    } finally {
+      this.isChecking = false;
+    }
+  }
+  async _check() {
     var _a, _b, _c, _d;
     const now = /* @__PURE__ */ new Date();
     const nowMs = now.getTime();
@@ -596,16 +596,14 @@ var AlertManager = class {
     }
   }
   fire(key, title, body, type) {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d;
     this.firedAlerts.add(key);
     const settings = this.getSettings();
     const doMacOS = (_a = settings.notifMacOS) != null ? _a : true;
-    const doObsidian = (_b = settings.notifObsidian) != null ? _b : true;
-    const doSound = (_c = settings.notifSound) != null ? _c : true;
-    const icon = type === "event" ? "\u{1F5D3}" : "\u2713";
+    const doSound = (_b = settings.notifSound) != null ? _b : true;
+    const rawSound = type === "event" ? (_c = settings.notifSoundEvent) != null ? _c : "Glass" : (_d = settings.notifSoundReminder) != null ? _d : "Glass";
+    const soundName = doSound && rawSound !== "none" ? rawSound : "";
     if (doMacOS) {
-      const rawSound = type === "event" ? (_d = settings.notifSoundEvent) != null ? _d : "Glass" : (_e = settings.notifSoundReminder) != null ? _e : "Glass";
-      const soundName = doSound && rawSound !== "none" ? rawSound : "";
       try {
         const { exec } = window.require("child_process");
         const t = `Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`;
@@ -621,10 +619,6 @@ var AlertManager = class {
       } catch (err) {
         console.log("[Chronicle] osascript unavailable:", err);
       }
-    }
-    if (doObsidian) {
-      new import_obsidian2.Notice(`${icon} ${title}
-${body}`, 8e3);
     }
   }
   offsetToMs(offset) {
@@ -708,7 +702,6 @@ var DEFAULT_SETTINGS = {
   showScheduledCount: true,
   showFlaggedCount: true,
   notifMacOS: true,
-  notifObsidian: true,
   notifSound: true,
   notifEvents: true,
   notifReminders: true,
@@ -722,7 +715,7 @@ var DEFAULT_SETTINGS = {
 };
 
 // src/views/EventFormView.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian2 = require("obsidian");
 
 // src/ui/tagField.ts
 function buildTagField(app, wrapper, initial) {
@@ -815,7 +808,7 @@ function buildTagField(app, wrapper, initial) {
 
 // src/views/EventFormView.ts
 var EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
-var EventFormView = class extends import_obsidian3.ItemView {
+var EventFormView = class extends import_obsidian2.ItemView {
   constructor(leaf, eventManager, calendarManager, reminderManager, editingEvent, onSave) {
     super(leaf);
     this.editingEvent = null;
@@ -1106,7 +1099,7 @@ var EventFormView = class extends import_obsidian3.ItemView {
 };
 
 // src/main.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/data/ListManager.ts
 var ListManager = class {
@@ -1150,7 +1143,7 @@ var ListManager = class {
 };
 
 // src/data/ReminderManager.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 var ReminderManager = class {
   constructor(app, remindersFolder) {
     this.app = app;
@@ -1162,7 +1155,7 @@ var ReminderManager = class {
     if (!folder) return [];
     const reminders = [];
     for (const child of folder.children) {
-      if (child instanceof import_obsidian4.TFile && child.extension === "md") {
+      if (child instanceof import_obsidian3.TFile && child.extension === "md") {
         const reminder = await this.fileToReminder(child);
         if (reminder) reminders.push(reminder);
       }
@@ -1182,7 +1175,7 @@ var ReminderManager = class {
       id: this.generateId(),
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const path = (0, import_obsidian4.normalizePath)(`${this.remindersFolder}/${full.title}.md`);
+    const path = (0, import_obsidian3.normalizePath)(`${this.remindersFolder}/${full.title}.md`);
     await this.app.vault.create(path, this.reminderToMarkdown(full));
     return full;
   }
@@ -1190,7 +1183,7 @@ var ReminderManager = class {
     var _a;
     const file = this.findFileForReminder(reminder.id);
     if (!file) return;
-    const expectedPath = (0, import_obsidian4.normalizePath)(`${this.remindersFolder}/${reminder.title}.md`);
+    const expectedPath = (0, import_obsidian3.normalizePath)(`${this.remindersFolder}/${reminder.title}.md`);
     if (file.path !== expectedPath) {
       await this.app.fileManager.renameFile(file, expectedPath);
     }
@@ -1309,7 +1302,7 @@ ${body}`;
     const folder = this.app.vault.getFolderByPath(this.remindersFolder);
     if (!folder) return null;
     for (const child of folder.children) {
-      if (!(child instanceof import_obsidian4.TFile)) continue;
+      if (!(child instanceof import_obsidian3.TFile)) continue;
       const cache = this.app.metadataCache.getFileCache(child);
       if (((_a = cache == null ? void 0 : cache.frontmatter) == null ? void 0 : _a.id) === id) return child;
     }
@@ -1329,7 +1322,7 @@ ${body}`;
 };
 
 // src/data/EventManager.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var EventManager = class {
   constructor(app, eventsFolder) {
     this.app = app;
@@ -1340,7 +1333,7 @@ var EventManager = class {
     if (!folder) return [];
     const events = [];
     for (const child of folder.children) {
-      if (child instanceof import_obsidian5.TFile && child.extension === "md") {
+      if (child instanceof import_obsidian4.TFile && child.extension === "md") {
         const event = await this.fileToEvent(child);
         if (event) events.push(event);
       }
@@ -1354,7 +1347,7 @@ var EventManager = class {
       id: this.generateId(),
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const path = (0, import_obsidian5.normalizePath)(`${this.eventsFolder}/${full.title}.md`);
+    const path = (0, import_obsidian4.normalizePath)(`${this.eventsFolder}/${full.title}.md`);
     await this.app.vault.create(path, this.eventToMarkdown(full));
     return full;
   }
@@ -1362,7 +1355,7 @@ var EventManager = class {
     var _a;
     const file = this.findFileForEvent(event.id);
     if (!file) return;
-    const expectedPath = (0, import_obsidian5.normalizePath)(`${this.eventsFolder}/${event.title}.md`);
+    const expectedPath = (0, import_obsidian4.normalizePath)(`${this.eventsFolder}/${event.title}.md`);
     if (file.path !== expectedPath) {
       await this.app.fileManager.renameFile(file, expectedPath);
     }
@@ -1512,7 +1505,7 @@ ${body}`;
     const folder = this.app.vault.getFolderByPath(this.eventsFolder);
     if (!folder) return null;
     for (const child of folder.children) {
-      if (!(child instanceof import_obsidian5.TFile)) continue;
+      if (!(child instanceof import_obsidian4.TFile)) continue;
       const cache = this.app.metadataCache.getFileCache(child);
       if (((_a = cache == null ? void 0 : cache.frontmatter) == null ? void 0 : _a.id) === id) return child;
     }
@@ -1529,11 +1522,11 @@ ${body}`;
 };
 
 // src/views/ReminderView.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/ui/ReminderModal.ts
-var import_obsidian6 = require("obsidian");
-var ReminderModal = class extends import_obsidian6.Modal {
+var import_obsidian5 = require("obsidian");
+var ReminderModal = class extends import_obsidian5.Modal {
   constructor(app, reminderManager, listManager, editingReminder, onSave, onExpand, plugin) {
     super(app);
     this.reminderManager = reminderManager;
@@ -1680,7 +1673,7 @@ var ReminderModal = class extends import_obsidian6.Modal {
         const existing = await this.reminderManager.getAll();
         const duplicate = existing.find((e) => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new import_obsidian6.Notice(`A reminder named "${title}" already exists.`, 4e3);
+          new import_obsidian5.Notice(`A reminder named "${title}" already exists.`, 4e3);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
@@ -1730,8 +1723,8 @@ var ReminderModal = class extends import_obsidian6.Modal {
 };
 
 // src/ui/ReminderDetailPopup.ts
-var import_obsidian7 = require("obsidian");
-var ReminderDetailPopup = class extends import_obsidian7.Modal {
+var import_obsidian6 = require("obsidian");
+var ReminderDetailPopup = class extends import_obsidian6.Modal {
   constructor(app, reminder, listManager, timeFormat, onEdit) {
     super(app);
     this.reminder = reminder;
@@ -1858,9 +1851,9 @@ function formatDuration(minutes) {
 }
 
 // src/views/ReminderFormView.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 var REMINDER_FORM_VIEW_TYPE = "chronicle-reminder-form";
-var ReminderFormView = class extends import_obsidian8.ItemView {
+var ReminderFormView = class extends import_obsidian7.ItemView {
   constructor(leaf, reminderManager, listManager, editingReminder, onSave) {
     super(leaf);
     this.editingReminder = null;
@@ -2010,7 +2003,7 @@ var ReminderFormView = class extends import_obsidian8.ItemView {
         const existing = await this.reminderManager.getAll();
         const duplicate = existing.find((e) => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new import_obsidian8.Notice(`A reminder named "${title}" already exists.`, 4e3);
+          new import_obsidian7.Notice(`A reminder named "${title}" already exists.`, 4e3);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
@@ -2056,7 +2049,7 @@ var ReminderFormView = class extends import_obsidian8.ItemView {
 
 // src/views/ReminderView.ts
 var REMINDER_VIEW_TYPE = "chronicle-reminder-view";
-var ReminderView = class extends import_obsidian9.ItemView {
+var ReminderView = class extends import_obsidian8.ItemView {
   constructor(leaf, reminderManager, listManager, plugin) {
     super(leaf);
     this.currentListId = "today";
@@ -2440,11 +2433,11 @@ var ReminderView = class extends import_obsidian9.ItemView {
 };
 
 // src/views/CalendarView.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/ui/EventModal.ts
-var import_obsidian10 = require("obsidian");
-var EventModal = class extends import_obsidian10.Modal {
+var import_obsidian9 = require("obsidian");
+var EventModal = class extends import_obsidian9.Modal {
   constructor(app, eventManager, calendarManager, reminderManager, editingEvent, onSave, onExpand) {
     super(app);
     this.eventManager = eventManager;
@@ -2698,8 +2691,8 @@ var EventModal = class extends import_obsidian10.Modal {
 };
 
 // src/ui/EventDetailPopup.ts
-var import_obsidian11 = require("obsidian");
-var EventDetailPopup = class extends import_obsidian11.Modal {
+var import_obsidian10 = require("obsidian");
+var EventDetailPopup = class extends import_obsidian10.Modal {
   constructor(app, event, calendarManager, reminderManager, timeFormat, onEdit) {
     super(app);
     this.event = event;
@@ -2834,7 +2827,7 @@ function formatAlert2(alert) {
 // src/views/CalendarView.ts
 var CALENDAR_VIEW_TYPE = "chronicle-calendar-view";
 var HOUR_HEIGHT = 56;
-var CalendarView = class extends import_obsidian12.ItemView {
+var CalendarView = class extends import_obsidian11.ItemView {
   constructor(leaf, eventManager, reminderManager, calendarManager, plugin) {
     super(leaf);
     this.currentDate = /* @__PURE__ */ new Date();
@@ -3420,7 +3413,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
 };
 
 // src/main.ts
-var ChroniclePlugin = class extends import_obsidian13.Plugin {
+var ChroniclePlugin = class extends import_obsidian12.Plugin {
   async onload() {
     await this.loadSettings();
     this.calendarManager = new CalendarManager(

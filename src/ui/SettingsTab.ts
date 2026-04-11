@@ -104,17 +104,6 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       );
 
     new Setting(el)
-      .setName("Obsidian in-app toast")
-      .setDesc("Show a banner inside Obsidian when an alert fires.")
-      .addToggle(t => t
-        .setValue(this.plugin.settings.notifObsidian ?? true)
-        .onChange(async (value) => {
-          this.plugin.settings.notifObsidian = value;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(el)
       .setName("Sound")
       .setDesc("Play a chime when an alert fires.")
       .addToggle(t => t

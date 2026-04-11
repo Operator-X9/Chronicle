@@ -1,4 +1,4 @@
-import { App, Notice } from "obsidian";
+import { App } from "obsidian";
 import { ReminderManager } from "./ReminderManager";
 import { EventManager } from "./EventManager";
 import { AlertOffset } from "../types";
@@ -10,6 +10,7 @@ export class AlertManager {
   private eventManager:     EventManager;
   private intervalId:       number | null = null;
   private firedAlerts:      Set<string>   = new Set();
+  private isChecking:       boolean       = false;
 
   // Store handler references so we can remove them in stop()
   private onChanged: ((file: any) => void) | null = null;
@@ -69,6 +70,12 @@ export class AlertManager {
   }
 
   async check() {
+    if (this.isChecking) return;
+    this.isChecking = true;
+    try { await this._check(); } finally { this.isChecking = false; }
+  }
+
+  async _check() {
     const now      = new Date();
     const nowMs    = now.getTime();
     const windowMs = 5 * 60 * 1000;
@@ -126,17 +133,13 @@ export class AlertManager {
 
   public fire(key: string, title: string, body: string, type: "event" | "reminder") {
     this.firedAlerts.add(key);
-    const settings   = this.getSettings();
-    const doMacOS    = settings.notifMacOS    ?? true;
-    const doObsidian = settings.notifObsidian ?? true;
-    const doSound    = settings.notifSound    ?? true;
-    const icon       = type === "event" ? "🗓" : "✓";
+    const settings  = this.getSettings();
+    const doMacOS   = settings.notifMacOS ?? true;
+    const doSound   = settings.notifSound ?? true;
+    const rawSound  = type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass");
+    const soundName = (doSound && rawSound !== "none") ? rawSound : "";
 
-    // ── macOS native notification ──────────────────────────────────────────
     if (doMacOS) {
-      const rawSound  = type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass");
-      const soundName = (doSound && rawSound !== "none") ? rawSound : "";
-
       try {
         const { exec } = (window as any).require("child_process");
         const t = `Chronicle — ${type === "event" ? "Event" : "Reminder"}`;
@@ -151,11 +154,6 @@ export class AlertManager {
       } catch (err) {
         console.log("[Chronicle] osascript unavailable:", err);
       }
-    }
-
-    // ── In-app toast (independent of macOS toggle) ─────────────────────────
-    if (doObsidian) {
-      new Notice(`${icon} ${title}\n${body}`, 8000);
     }
   }
 

@@ -137,7 +137,6 @@ export interface ChronicleSettings {
 
   // Notification channels
   notifMacOS: boolean;
-  notifObsidian: boolean;
   notifSound: boolean;
   notifEvents: boolean;
   notifReminders: boolean;
@@ -181,7 +180,6 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
   showScheduledCount: true,
   showFlaggedCount: true,
   notifMacOS: true,
-  notifObsidian: true,
   notifSound: true,
   notifEvents: true,
   notifReminders: true,
