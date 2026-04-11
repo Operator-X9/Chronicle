@@ -204,15 +204,26 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
         });
       }
     );
-    new import_obsidian.Setting(el).setName("Send test notification").setDesc("Fires a test alert using your current settings.").addButton(
-      (btn) => btn.setButtonText("Test now").onClick(() => {
+    new import_obsidian.Setting(el).setName("Test reminder notification").setDesc("Fires a test reminder alert using your current settings.").addButton(
+      (btn) => btn.setButtonText("Test reminder").onClick(() => {
         this.plugin.alertManager.fire(
-          "settings-test",
+          "settings-test-reminder",
           "Chronicle test",
-          "Your notifications are working.",
+          "Your reminder notifications are working.",
+          "reminder"
+        );
+        this.plugin.alertManager["firedAlerts"].delete("settings-test-reminder");
+      })
+    );
+    new import_obsidian.Setting(el).setName("Test event notification").setDesc("Fires a test event alert using your current settings.").addButton(
+      (btn) => btn.setButtonText("Test event").onClick(() => {
+        this.plugin.alertManager.fire(
+          "settings-test-event",
+          "Chronicle test",
+          "Your event notifications are working.",
           "event"
         );
-        this.plugin.alertManager["firedAlerts"].delete("settings-test");
+        this.plugin.alertManager["firedAlerts"].delete("settings-test-event");
       })
     );
   }
