@@ -69,7 +69,6 @@ var CalendarManager = class {
       this.onUpdate();
     }
   }
-  // Returns CSS hex color for a CalendarColor name
   static colorToHex(color) {
     var _a;
     if (color.startsWith("#")) return color;
@@ -92,6 +91,58 @@ var CalendarManager = class {
     return `${base}-${suffix}`;
   }
 };
+
+// src/utils/constants.ts
+var ALERT_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "at-time", label: "At time" },
+  { value: "5min", label: "5 minutes before" },
+  { value: "10min", label: "10 minutes before" },
+  { value: "15min", label: "15 minutes before" },
+  { value: "30min", label: "30 minutes before" },
+  { value: "1hour", label: "1 hour before" },
+  { value: "2hours", label: "2 hours before" },
+  { value: "1day", label: "1 day before" },
+  { value: "2days", label: "2 days before" },
+  { value: "1week", label: "1 week before" }
+];
+var RECURRENCE_OPTIONS = [
+  { value: "", label: "Never" },
+  { value: "FREQ=DAILY", label: "Every day" },
+  { value: "FREQ=WEEKLY", label: "Every week" },
+  { value: "FREQ=MONTHLY", label: "Every month" },
+  { value: "FREQ=YEARLY", label: "Every year" },
+  { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Weekdays" }
+];
+var STATUS_OPTIONS = [
+  { value: "todo", label: "To do" },
+  { value: "in-progress", label: "In progress" },
+  { value: "done", label: "Done" },
+  { value: "cancelled", label: "Cancelled" }
+];
+var PRIORITY_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" }
+];
+var SOUND_OPTIONS = [
+  { value: "none", label: "None (silent)" },
+  { value: "Glass", label: "Glass" },
+  { value: "Ping", label: "Ping" },
+  { value: "Tink", label: "Tink" },
+  { value: "Basso", label: "Basso" },
+  { value: "Funk", label: "Funk" },
+  { value: "Hero", label: "Hero" },
+  { value: "Sosumi", label: "Sosumi" },
+  { value: "Submarine", label: "Submarine" },
+  { value: "Blow", label: "Blow" },
+  { value: "Bottle", label: "Bottle" },
+  { value: "Frog", label: "Frog" },
+  { value: "Morse", label: "Morse" },
+  { value: "Pop", label: "Pop" },
+  { value: "Purr", label: "Purr" }
+];
 
 // src/ui/SettingsTab.ts
 var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
@@ -491,10 +542,12 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
     el.createDiv("cs-divider");
   }
   addSoundOptions(drop) {
-    return drop.addOption("none", "None (silent)").addOption("Glass", "Glass").addOption("Ping", "Ping").addOption("Tink", "Tink").addOption("Basso", "Basso").addOption("Funk", "Funk").addOption("Hero", "Hero").addOption("Sosumi", "Sosumi").addOption("Submarine", "Submarine").addOption("Blow", "Blow").addOption("Bottle", "Bottle").addOption("Frog", "Frog").addOption("Morse", "Morse").addOption("Pop", "Pop").addOption("Purr", "Purr");
+    for (const s of SOUND_OPTIONS) drop.addOption(s.value, s.label);
+    return drop;
   }
   addAlertOptions(drop) {
-    return drop.addOption("none", "None").addOption("at-time", "At time").addOption("5min", "5 minutes before").addOption("10min", "10 minutes before").addOption("15min", "15 minutes before").addOption("30min", "30 minutes before").addOption("1hour", "1 hour before").addOption("2hours", "2 hours before").addOption("1day", "1 day before").addOption("2days", "2 days before").addOption("1week", "1 week before");
+    for (const a of ALERT_OPTIONS) drop.addOption(a.value, a.label);
+    return drop;
   }
 };
 
@@ -517,7 +570,6 @@ var AlertManager = class {
       Notification.requestPermission();
     }
     setTimeout(() => {
-      console.log("[Chronicle] AlertManager ready, starting poll");
       this.check();
       this.intervalId = window.setInterval(() => this.check(), 30 * 1e3);
     }, 3e3);
@@ -547,7 +599,6 @@ var AlertManager = class {
       this.app.vault.off("create", this.onCreate);
       this.onCreate = null;
     }
-    console.log("[Chronicle] AlertManager stopped");
   }
   async check() {
     if (this.isChecking) return;
@@ -560,42 +611,38 @@ var AlertManager = class {
   }
   async _check() {
     var _a, _b, _c, _d;
-    const now = /* @__PURE__ */ new Date();
-    const nowMs = now.getTime();
+    const nowMs = Date.now();
     const windowMs = 5 * 60 * 1e3;
-    console.log(`[Chronicle] Alert check at ${now.toLocaleTimeString()}`);
-    const events = await this.eventManager.getAll();
-    console.log(`[Chronicle] Checking ${events.length} events`);
-    if ((_a = this.getSettings().notifEvents) != null ? _a : true) for (const event of events) {
-      if (!event.alert || event.alert === "none") continue;
-      if (!event.startDate || !event.startTime) continue;
-      const alertKey = `event-${event.id}-${event.startDate}-${event.alert}`;
-      if (this.firedAlerts.has(alertKey)) continue;
-      const startMs = (/* @__PURE__ */ new Date(`${event.startDate}T${event.startTime}`)).getTime();
-      const alertMs = startMs - this.offsetToMs(event.alert);
-      console.log(`[Chronicle] Event "${event.title}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs) / 1e3)}s)`);
-      if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
-        console.log(`[Chronicle] FIRING alert for event "${event.title}"`);
-        this.fire(alertKey, event.title, this.buildEventBody(event.startTime, event.alert), "event");
+    if ((_a = this.getSettings().notifEvents) != null ? _a : true) {
+      const events = await this.eventManager.getAll();
+      for (const event of events) {
+        if (!event.alert || event.alert === "none") continue;
+        if (!event.startDate || !event.startTime) continue;
+        const alertKey = `event-${event.id}-${event.startDate}-${event.alert}`;
+        if (this.firedAlerts.has(alertKey)) continue;
+        const startMs = (/* @__PURE__ */ new Date(`${event.startDate}T${event.startTime}`)).getTime();
+        const alertMs = startMs - this.offsetToMs(event.alert);
+        if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
+          this.fire(alertKey, event.title, this.buildEventBody(event.startTime, event.alert), "event");
+        }
       }
     }
-    const reminders = await this.reminderManager.getAll();
-    console.log(`[Chronicle] Checking ${reminders.length} reminders`);
-    if ((_b = this.getSettings().notifReminders) != null ? _b : true) for (const reminder of reminders) {
-      if (!reminder.alert || reminder.alert === "none") continue;
-      if (!reminder.dueDate && !reminder.dueTime) continue;
-      if (reminder.status === "done" || reminder.status === "cancelled") continue;
-      const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-      const dateStr = (_c = reminder.dueDate) != null ? _c : todayStr;
-      const alertKey = `reminder-${reminder.id}-${dateStr}-${reminder.alert}`;
-      if (this.firedAlerts.has(alertKey)) continue;
-      const timeStr = (_d = reminder.dueTime) != null ? _d : "09:00";
-      const dueMs = (/* @__PURE__ */ new Date(`${dateStr}T${timeStr}`)).getTime();
-      const alertMs = dueMs - this.offsetToMs(reminder.alert);
-      console.log(`[Chronicle] Reminder "${reminder.title}" date="${dateStr}" time="${timeStr}" alert="${reminder.alert}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs) / 1e3)}s)`);
-      if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
-        console.log(`[Chronicle] FIRING alert for reminder "${reminder.title}"`);
-        this.fire(alertKey, reminder.title, this.buildReminderBody(reminder.dueDate, reminder.dueTime, reminder.alert), "reminder");
+    if ((_b = this.getSettings().notifReminders) != null ? _b : true) {
+      const reminders = await this.reminderManager.getAll();
+      const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+      for (const reminder of reminders) {
+        if (!reminder.alert || reminder.alert === "none") continue;
+        if (!reminder.dueDate && !reminder.dueTime) continue;
+        if (reminder.status === "done" || reminder.status === "cancelled") continue;
+        const dateStr = (_c = reminder.dueDate) != null ? _c : today;
+        const alertKey = `reminder-${reminder.id}-${dateStr}-${reminder.alert}`;
+        if (this.firedAlerts.has(alertKey)) continue;
+        const timeStr = (_d = reminder.dueTime) != null ? _d : "09:00";
+        const dueMs = (/* @__PURE__ */ new Date(`${dateStr}T${timeStr}`)).getTime();
+        const alertMs = dueMs - this.offsetToMs(reminder.alert);
+        if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
+          this.fire(alertKey, reminder.title, this.buildReminderBody(reminder.dueDate, reminder.dueTime, reminder.alert), "reminder");
+        }
       }
     }
   }
@@ -613,19 +660,12 @@ ${body}`,
         silent: true
         // we control sound separately below
       });
-      console.log("[Chronicle] Web Notification sent");
     }
     if (doSound && rawSound && rawSound !== "none") {
       try {
         const { exec } = window.require("child_process");
-        exec(
-          `afplay "/System/Library/Sounds/${rawSound}.aiff"`,
-          (err) => {
-            if (err) console.log("[Chronicle] afplay failed:", err.message);
-          }
-        );
-      } catch (err) {
-        console.log("[Chronicle] afplay unavailable:", err);
+        exec(`afplay "/System/Library/Sounds/${rawSound}.aiff"`);
+      } catch (e) {
       }
     }
   }
@@ -917,33 +957,12 @@ var EventFormView = class extends import_obsidian2.ItemView {
     });
     endTimeInput.value = (_h = e == null ? void 0 : e.endTime) != null ? _h : "10:00";
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
-    const recurrences = [
-      { value: "", label: "Never" },
-      { value: "FREQ=DAILY", label: "Every day" },
-      { value: "FREQ=WEEKLY", label: "Every week" },
-      { value: "FREQ=MONTHLY", label: "Every month" },
-      { value: "FREQ=YEARLY", label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Weekdays" }
-    ];
-    for (const r of recurrences) {
-      const opt = recSelect.createEl("option", { value: r.value, text: r.label });
-      if ((e == null ? void 0 : e.recurrence) === r.value) opt.selected = true;
+    for (const rec of RECURRENCE_OPTIONS) {
+      const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
+      if ((e == null ? void 0 : e.recurrence) === rec.value) opt.selected = true;
     }
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const alerts = [
-      { value: "none", label: "None" },
-      { value: "at-time", label: "At time of event" },
-      { value: "5min", label: "5 minutes before" },
-      { value: "10min", label: "10 minutes before" },
-      { value: "15min", label: "15 minutes before" },
-      { value: "30min", label: "30 minutes before" },
-      { value: "1hour", label: "1 hour before" },
-      { value: "2hours", label: "2 hours before" },
-      { value: "1day", label: "1 day before" },
-      { value: "2days", label: "2 days before" },
-      { value: "1week", label: "1 week before" }
-    ];
-    for (const a of alerts) {
+    for (const a of ALERT_OPTIONS) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if ((e == null ? void 0 : e.alert) === a.value) opt.selected = true;
     }
@@ -1487,7 +1506,7 @@ ${yaml}
 ${body}`;
   }
   async fileToEvent(file) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
     try {
       const cache = this.app.metadataCache.getFileCache(file);
       const fm = cache == null ? void 0 : cache.frontmatter;
@@ -1509,9 +1528,9 @@ ${body}`;
         alert: (_h = fm.alert) != null ? _h : "none",
         tags: (_i = fm["tags"]) != null ? _i : [],
         linkedNotes: (_j = fm["linked-notes"]) != null ? _j : [],
-        linkedReminderIds: (_l = (_k = fm["linked-reminder-ids"]) != null ? _k : fm["linked-reminder-ids"]) != null ? _l : [],
-        completedInstances: (_m = fm["completed-instances"]) != null ? _m : [],
-        createdAt: (_n = fm["created-at"]) != null ? _n : (/* @__PURE__ */ new Date()).toISOString(),
+        linkedReminderIds: (_k = fm["linked-reminder-ids"]) != null ? _k : [],
+        completedInstances: (_l = fm["completed-instances"]) != null ? _l : [],
+        createdAt: (_m = fm["created-at"]) != null ? _m : (/* @__PURE__ */ new Date()).toISOString(),
         notes
       };
     } catch (e) {
@@ -1587,26 +1606,14 @@ var ReminderModal = class extends import_obsidian5.Modal {
     locationInput.value = (_b = r == null ? void 0 : r.location) != null ? _b : "";
     const row1 = form.createDiv("cf-row");
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
-    const statuses = [
-      { value: "todo", label: "To do" },
-      { value: "in-progress", label: "In progress" },
-      { value: "done", label: "Done" },
-      { value: "cancelled", label: "Cancelled" }
-    ];
     const defaultStatus = (_e = (_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null ? void 0 : _d.defaultReminderStatus) != null ? _e : "todo";
-    for (const s of statuses) {
+    for (const s of STATUS_OPTIONS) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
       if (r ? r.status === s.value : s.value === defaultStatus) opt.selected = true;
     }
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
-    const priorities = [
-      { value: "none", label: "None" },
-      { value: "low", label: "Low" },
-      { value: "medium", label: "Medium" },
-      { value: "high", label: "High" }
-    ];
     const defaultPriority = (_h = (_g = (_f = this.plugin) == null ? void 0 : _f.settings) == null ? void 0 : _g.defaultReminderPriority) != null ? _h : "none";
-    for (const p of priorities) {
+    for (const p of PRIORITY_OPTIONS) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
       if (r ? r.priority === p.value : p.value === defaultPriority) opt.selected = true;
     }
@@ -1616,34 +1623,13 @@ var ReminderModal = class extends import_obsidian5.Modal {
     const dueTimeInput = this.field(row2, "Time").createEl("input", { type: "time", cls: "cf-input" });
     dueTimeInput.value = (_j = r == null ? void 0 : r.dueTime) != null ? _j : "";
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
-    const recurrences = [
-      { value: "", label: "Never" },
-      { value: "FREQ=DAILY", label: "Every day" },
-      { value: "FREQ=WEEKLY", label: "Every week" },
-      { value: "FREQ=MONTHLY", label: "Every month" },
-      { value: "FREQ=YEARLY", label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Weekdays" }
-    ];
-    for (const rec of recurrences) {
+    for (const rec of RECURRENCE_OPTIONS) {
       const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
       if ((r == null ? void 0 : r.recurrence) === rec.value) opt.selected = true;
     }
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const reminderAlerts = [
-      { value: "none", label: "None" },
-      { value: "at-time", label: "At time of reminder" },
-      { value: "5min", label: "5 minutes before" },
-      { value: "10min", label: "10 minutes before" },
-      { value: "15min", label: "15 minutes before" },
-      { value: "30min", label: "30 minutes before" },
-      { value: "1hour", label: "1 hour before" },
-      { value: "2hours", label: "2 hours before" },
-      { value: "1day", label: "1 day before" },
-      { value: "2days", label: "2 days before" },
-      { value: "1week", label: "1 week before" }
-    ];
     const defaultAlert = (_m = (_l = (_k = this.plugin) == null ? void 0 : _k.settings) == null ? void 0 : _l.defaultAlert) != null ? _m : "none";
-    for (const a of reminderAlerts) {
+    for (const a of ALERT_OPTIONS) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if (r ? r.alert === a.value : a.value === defaultAlert) opt.selected = true;
     }
@@ -1742,6 +1728,87 @@ var ReminderModal = class extends import_obsidian5.Modal {
 
 // src/ui/ReminderDetailPopup.ts
 var import_obsidian6 = require("obsidian");
+
+// src/utils/formatters.ts
+function formatDateFull(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+function formatDateRelative(dateStr) {
+  const today = todayStr();
+  const tomorrow = new Date(Date.now() + 864e5).toISOString().split("T")[0];
+  if (dateStr === today) return "Today";
+  if (dateStr === tomorrow) return "Tomorrow";
+  return (/* @__PURE__ */ new Date(dateStr + "T00:00:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+function formatTime12(timeStr) {
+  const [h, m] = timeStr.split(":").map(Number);
+  const suffix = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+function formatHour12(h) {
+  if (h === 0) return "12 AM";
+  if (h < 12) return `${h} AM`;
+  if (h === 12) return "12 PM";
+  return `${h - 12} PM`;
+}
+function formatRecurrence(rrule) {
+  var _a;
+  const map = {
+    "FREQ=DAILY": "Every day",
+    "FREQ=WEEKLY": "Every week",
+    "FREQ=MONTHLY": "Every month",
+    "FREQ=YEARLY": "Every year",
+    "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR": "Weekdays"
+  };
+  return (_a = map[rrule]) != null ? _a : rrule;
+}
+function formatAlert(alert) {
+  var _a;
+  const map = {
+    "at-time": "At time",
+    "5min": "5 minutes before",
+    "10min": "10 minutes before",
+    "15min": "15 minutes before",
+    "30min": "30 minutes before",
+    "1hour": "1 hour before",
+    "2hours": "2 hours before",
+    "1day": "1 day before",
+    "2days": "2 days before",
+    "1week": "1 week before"
+  };
+  return (_a = map[alert]) != null ? _a : alert;
+}
+function formatStatus(s) {
+  var _a;
+  return (_a = { todo: "To Do", "in-progress": "In Progress", done: "Done", cancelled: "Cancelled" }[s]) != null ? _a : s;
+}
+function formatPriority(p) {
+  var _a;
+  const map = {
+    low: "Low priority",
+    medium: "Medium priority",
+    high: "High priority"
+  };
+  return (_a = map[p]) != null ? _a : p;
+}
+function formatDuration(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
+}
+function todayStr() {
+  return (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+}
+
+// src/ui/ReminderDetailPopup.ts
 var ReminderDetailPopup = class extends import_obsidian6.Modal {
   constructor(app, reminder, listManager, timeFormat, onEdit) {
     super(app);
@@ -1764,7 +1831,7 @@ var ReminderDetailPopup = class extends import_obsidian6.Modal {
     }
     const body = contentEl.createDiv("cdp-body");
     if (r.dueDate || r.dueTime) {
-      const datePart = r.dueDate ? formatDate(r.dueDate) : "";
+      const datePart = r.dueDate ? formatDateFull(r.dueDate) : "";
       const timePart = r.dueTime ? this.fmtTime(r.dueTime) : "";
       const display = [datePart, timePart].filter(Boolean).join("  \xB7  ");
       this.row(body, "At", display);
@@ -1816,57 +1883,6 @@ var ReminderDetailPopup = class extends import_obsidian6.Modal {
     this.contentEl.empty();
   }
 };
-function formatStatus(s) {
-  var _a;
-  return (_a = { todo: "To Do", "in-progress": "In Progress", done: "Done", cancelled: "Cancelled" }[s]) != null ? _a : s;
-}
-function formatPriority(p) {
-  var _a;
-  const map = { low: "Low priority", medium: "Medium priority", high: "High priority" };
-  return (_a = map[p]) != null ? _a : p;
-}
-function formatDate(dateStr) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  });
-}
-function formatRecurrence(rrule) {
-  var _a;
-  const map = {
-    "FREQ=DAILY": "Every day",
-    "FREQ=WEEKLY": "Every week",
-    "FREQ=MONTHLY": "Every month",
-    "FREQ=YEARLY": "Every year",
-    "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR": "Weekdays"
-  };
-  return (_a = map[rrule]) != null ? _a : rrule;
-}
-function formatAlert(alert) {
-  var _a;
-  const map = {
-    "at-time": "At time of reminder",
-    "5min": "5 minutes before",
-    "10min": "10 minutes before",
-    "15min": "15 minutes before",
-    "30min": "30 minutes before",
-    "1hour": "1 hour before",
-    "2hours": "2 hours before",
-    "1day": "1 day before",
-    "2days": "2 days before",
-    "1week": "1 week before"
-  };
-  return (_a = map[alert]) != null ? _a : alert;
-}
-function formatDuration(minutes) {
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
-}
 
 // src/views/ReminderFormView.ts
 var import_obsidian7 = require("obsidian");
@@ -1923,24 +1939,12 @@ var ReminderFormView = class extends import_obsidian7.ItemView {
     locationInput.value = (_b = r == null ? void 0 : r.location) != null ? _b : "";
     const row1 = form.createDiv("cf-row");
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
-    const statuses = [
-      { value: "todo", label: "To do" },
-      { value: "in-progress", label: "In progress" },
-      { value: "done", label: "Done" },
-      { value: "cancelled", label: "Cancelled" }
-    ];
-    for (const s of statuses) {
+    for (const s of STATUS_OPTIONS) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
       if ((r == null ? void 0 : r.status) === s.value) opt.selected = true;
     }
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
-    const priorities = [
-      { value: "none", label: "None" },
-      { value: "low", label: "Low" },
-      { value: "medium", label: "Medium" },
-      { value: "high", label: "High" }
-    ];
-    for (const p of priorities) {
+    for (const p of PRIORITY_OPTIONS) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
       if ((r == null ? void 0 : r.priority) === p.value) opt.selected = true;
     }
@@ -1950,33 +1954,12 @@ var ReminderFormView = class extends import_obsidian7.ItemView {
     const dueTimeInput = this.field(row2, "Time").createEl("input", { type: "time", cls: "cf-input" });
     dueTimeInput.value = (_d = r == null ? void 0 : r.dueTime) != null ? _d : "";
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
-    const recurrences = [
-      { value: "", label: "Never" },
-      { value: "FREQ=DAILY", label: "Every day" },
-      { value: "FREQ=WEEKLY", label: "Every week" },
-      { value: "FREQ=MONTHLY", label: "Every month" },
-      { value: "FREQ=YEARLY", label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Weekdays" }
-    ];
-    for (const rec of recurrences) {
+    for (const rec of RECURRENCE_OPTIONS) {
       const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
       if ((r == null ? void 0 : r.recurrence) === rec.value) opt.selected = true;
     }
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const formAlerts = [
-      { value: "none", label: "None" },
-      { value: "at-time", label: "At time of reminder" },
-      { value: "5min", label: "5 minutes before" },
-      { value: "10min", label: "10 minutes before" },
-      { value: "15min", label: "15 minutes before" },
-      { value: "30min", label: "30 minutes before" },
-      { value: "1hour", label: "1 hour before" },
-      { value: "2hours", label: "2 hours before" },
-      { value: "1day", label: "1 day before" },
-      { value: "2days", label: "2 days before" },
-      { value: "1week", label: "1 week before" }
-    ];
-    for (const a of formAlerts) {
+    for (const a of ALERT_OPTIONS) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if ((r == null ? void 0 : r.alert) === a.value) opt.selected = true;
     }
@@ -2229,22 +2212,16 @@ var ReminderView = class extends import_obsidian8.ItemView {
     const header = main.createDiv("chronicle-main-header");
     const titleEl = header.createDiv("chronicle-main-title");
     let reminders = [];
-    const smartColors = {
-      today: "#FF3B30",
-      scheduled: "#378ADD",
-      all: "#636366",
-      flagged: "#FF9500",
-      completed: "#34C759"
+    const SMART_LIST_IDS = ["today", "scheduled", "all", "flagged", "completed"];
+    const SMART_LABELS = {
+      today: "Today",
+      scheduled: "Scheduled",
+      all: "All",
+      flagged: "Flagged",
+      completed: "Completed"
     };
-    if (smartColors[this.currentListId]) {
-      const labels = {
-        today: "Today",
-        scheduled: "Scheduled",
-        all: "All",
-        flagged: "Flagged",
-        completed: "Completed"
-      };
-      titleEl.setText(labels[this.currentListId]);
+    if (SMART_LIST_IDS.includes(this.currentListId)) {
+      titleEl.setText(SMART_LABELS[this.currentListId]);
       titleEl.style.color = "var(--text-normal)";
       switch (this.currentListId) {
         case "today":
@@ -2346,7 +2323,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
     const titleEl = content.createDiv("chronicle-reminder-title");
     titleEl.setText(reminder.title);
     if (isDone) titleEl.addClass("done");
-    const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const today = todayStr();
     const metaRow = content.createDiv("chronicle-reminder-meta");
     if (isArchive && reminder.completedAt) {
       const completedDate = new Date(reminder.completedAt);
@@ -2360,8 +2337,8 @@ var ReminderView = class extends import_obsidian8.ItemView {
     } else if (reminder.dueDate || reminder.listId) {
       if (reminder.dueDate) {
         const metaDate = metaRow.createSpan("chronicle-reminder-date");
-        metaDate.setText(this.formatDate(reminder.dueDate));
-        if (reminder.dueDate < todayStr) metaDate.addClass("overdue");
+        metaDate.setText(formatDateRelative(reminder.dueDate));
+        if (reminder.dueDate < today) metaDate.addClass("overdue");
       }
       if (reminder.listId) {
         const list = this.listManager.getById(reminder.listId);
@@ -2416,7 +2393,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
   }
   groupReminders(reminders) {
     var _a, _b;
-    const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const today = todayStr();
     const nextWeek = new Date(Date.now() + 7 * 864e5).toISOString().split("T")[0];
     const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString().split("T")[0];
     if (this.currentListId === "completed") {
@@ -2457,13 +2434,6 @@ var ReminderView = class extends import_obsidian8.ItemView {
       groups["Later"].push(reminder);
     }
     return groups;
-  }
-  formatDate(dateStr) {
-    const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 864e5).toISOString().split("T")[0];
-    if (dateStr === today) return "Today";
-    if (dateStr === tomorrow) return "Tomorrow";
-    return (/* @__PURE__ */ new Date(dateStr + "T00:00:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
   async openReminderForm(reminder) {
     new ReminderModal(
@@ -2577,33 +2547,12 @@ var EventModal = class extends import_obsidian9.Modal {
     });
     endTimeInput.value = (_h = e == null ? void 0 : e.endTime) != null ? _h : "10:00";
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
-    const recurrences = [
-      { value: "", label: "Never" },
-      { value: "FREQ=DAILY", label: "Every day" },
-      { value: "FREQ=WEEKLY", label: "Every week" },
-      { value: "FREQ=MONTHLY", label: "Every month" },
-      { value: "FREQ=YEARLY", label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Weekdays" }
-    ];
-    for (const r of recurrences) {
-      const opt = recSelect.createEl("option", { value: r.value, text: r.label });
-      if ((e == null ? void 0 : e.recurrence) === r.value) opt.selected = true;
+    for (const rec of RECURRENCE_OPTIONS) {
+      const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
+      if ((e == null ? void 0 : e.recurrence) === rec.value) opt.selected = true;
     }
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const alerts = [
-      { value: "none", label: "None" },
-      { value: "at-time", label: "At time of event" },
-      { value: "5min", label: "5 minutes before" },
-      { value: "10min", label: "10 minutes before" },
-      { value: "15min", label: "15 minutes before" },
-      { value: "30min", label: "30 minutes before" },
-      { value: "1hour", label: "1 hour before" },
-      { value: "2hours", label: "2 hours before" },
-      { value: "1day", label: "1 day before" },
-      { value: "2days", label: "2 days before" },
-      { value: "1week", label: "1 week before" }
-    ];
-    for (const a of alerts) {
+    for (const a of ALERT_OPTIONS) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if ((e == null ? void 0 : e.alert) === a.value) opt.selected = true;
     }
@@ -2774,8 +2723,8 @@ var EventDetailPopup = class extends import_obsidian10.Modal {
       const cal = this.calendarManager.getById(ev.calendarId);
       if (cal) this.calRow(body, cal.name, CalendarManager.colorToHex(cal.color));
     }
-    if (ev.recurrence) this.row(body, "Repeat", formatRecurrence2(ev.recurrence));
-    if (ev.alert && ev.alert !== "none") this.row(body, "Alert", formatAlert2(ev.alert));
+    if (ev.recurrence) this.row(body, "Repeat", formatRecurrence(ev.recurrence));
+    if (ev.alert && ev.alert !== "none") this.row(body, "Alert", formatAlert(ev.alert));
     if (ev.tags && ev.tags.length > 0) this.row(body, "Tags", ev.tags.join(", "));
     if (ev.linkedNotes && ev.linkedNotes.length > 0)
       this.row(body, "Linked notes", ev.linkedNotes.join(", "));
@@ -2808,8 +2757,8 @@ var EventDetailPopup = class extends import_obsidian10.Modal {
     });
   }
   formatDateTime(ev) {
-    const startDate = formatDate2(ev.startDate);
-    const endDate = formatDate2(ev.endDate);
+    const startDate = formatDateFull(ev.startDate);
+    const endDate = formatDateFull(ev.endDate);
     const sameDay = ev.startDate === ev.endDate;
     if (ev.allDay) {
       return sameDay ? startDate : `${startDate} \u2013 ${endDate}`;
@@ -2845,42 +2794,6 @@ var EventDetailPopup = class extends import_obsidian10.Modal {
     this.contentEl.empty();
   }
 };
-function formatDate2(dateStr) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  });
-}
-function formatRecurrence2(rrule) {
-  var _a;
-  const map = {
-    "FREQ=DAILY": "Every day",
-    "FREQ=WEEKLY": "Every week",
-    "FREQ=MONTHLY": "Every month",
-    "FREQ=YEARLY": "Every year",
-    "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR": "Weekdays"
-  };
-  return (_a = map[rrule]) != null ? _a : rrule;
-}
-function formatAlert2(alert) {
-  var _a;
-  const map = {
-    "at-time": "At time of event",
-    "5min": "5 minutes before",
-    "10min": "10 minutes before",
-    "15min": "15 minutes before",
-    "30min": "30 minutes before",
-    "1hour": "1 hour before",
-    "2hours": "2 hours before",
-    "1day": "1 day before",
-    "2days": "2 days before",
-    "1week": "1 week before"
-  };
-  return (_a = map[alert]) != null ? _a : alert;
-}
 
 // src/views/CalendarView.ts
 var CALENDAR_VIEW_TYPE = "chronicle-calendar-view";
@@ -3050,7 +2963,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
     const grid = mini.createDiv("chronicle-mini-grid");
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     for (const d of ["S", "M", "T", "W", "T", "F", "S"])
       grid.createDiv("chronicle-mini-day-name").setText(d);
     for (let i = 0; i < firstDay; i++)
@@ -3059,7 +2972,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const dayEl = grid.createDiv("chronicle-mini-day");
       dayEl.setText(String(d));
-      if (dateStr === todayStr) dayEl.addClass("today");
+      if (dateStr === todayStr2) dayEl.addClass("today");
       dayEl.addEventListener("click", () => {
         this.currentDate = new Date(year, month, d);
         this.mode = "day";
@@ -3115,7 +3028,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
   // ── Year view ─────────────────────────────────────────────────────────────
   renderYearView(main, events, reminders) {
     const year = this.currentDate.getFullYear();
-    const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const yearGrid = main.createDiv("chronicle-year-grid");
     for (let m = 0; m < 12; m++) {
       const card = yearGrid.createDiv("chronicle-year-month-card");
@@ -3139,7 +3052,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
         const hasTask = reminders.some((t) => t.dueDate === dateStr && t.status !== "done");
         const dayEl = miniGrid.createDiv("chronicle-year-day");
         dayEl.setText(String(d));
-        if (dateStr === todayStr) dayEl.addClass("today");
+        if (dateStr === todayStr2) dayEl.addClass("today");
         if (hasEvent) dayEl.addClass("has-event");
         if (hasTask) dayEl.addClass("has-task");
         dayEl.addEventListener("click", () => {
@@ -3154,7 +3067,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
   renderMonthView(main, events, reminders) {
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
-    const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const grid = main.createDiv("chronicle-month-grid");
     for (const d of ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])
       grid.createDiv("chronicle-month-day-name").setText(d);
@@ -3168,7 +3081,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const cell = grid.createDiv("chronicle-month-cell");
-      if (dateStr === todayStr) cell.addClass("today");
+      if (dateStr === todayStr2) cell.addClass("today");
       cell.createDiv("chronicle-month-cell-num").setText(String(d));
       cell.addEventListener("dblclick", () => this.openNewEventModal(dateStr, true));
       cell.addEventListener("contextmenu", (e) => {
@@ -3191,9 +3104,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
       });
       reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").slice(0, 2).forEach((task) => {
         const pill = cell.createDiv("chronicle-month-event-pill");
-        pill.style.backgroundColor = "#FF3B3022";
-        pill.style.borderLeft = "3px solid #FF3B30";
-        pill.style.color = "#FF3B30";
+        pill.addClass("chronicle-task-pill");
         pill.setText("\u2713 " + task.title);
       });
     }
@@ -3212,14 +3123,14 @@ var CalendarView = class extends import_obsidian11.ItemView {
       d.setDate(d.getDate() + i);
       return d;
     });
-    const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const calGrid = main.createDiv("chronicle-week-grid");
     const timeCol = calGrid.createDiv("chronicle-time-col");
     timeCol.createDiv("chronicle-time-col-header");
     const shelfSpacer = timeCol.createDiv("chronicle-time-col-shelf-spacer");
     shelfSpacer.setText("all-day");
     for (let h = 0; h < 24; h++)
-      timeCol.createDiv("chronicle-time-slot").setText(this.formatHour(h));
+      timeCol.createDiv("chronicle-time-slot").setText(formatHour12(h));
     for (const day of days) {
       const dateStr = day.toISOString().split("T")[0];
       const col = calGrid.createDiv("chronicle-day-col");
@@ -3230,7 +3141,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
       );
       const dayNum = dayHeader.createDiv("chronicle-day-num");
       dayNum.setText(String(day.getDate()));
-      if (dateStr === todayStr) dayNum.addClass("today");
+      if (dateStr === todayStr2) dayNum.addClass("today");
       const shelf = col.createDiv("chronicle-week-allday-shelf");
       for (const event of allDayEvents)
         this.renderEventPillAllDay(shelf, event);
@@ -3263,9 +3174,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
         })() : 0;
         const pill = timeGrid.createDiv("chronicle-task-day-pill");
         pill.style.top = `${top}px`;
-        pill.style.backgroundColor = "#FF3B3022";
-        pill.style.borderLeft = "3px solid #FF3B30";
-        pill.style.color = "#FF3B30";
+        pill.addClass("chronicle-task-pill");
         pill.setText("\u2713 " + task.title);
       });
     }
@@ -3286,7 +3195,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
   // ── Day view ──────────────────────────────────────────────────────────────
   renderDayView(main, events, reminders) {
     const dateStr = this.currentDate.toISOString().split("T")[0];
-    const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const allDayEvents = events.filter((e) => e.startDate === dateStr && e.allDay && this.isCalendarVisible(e.calendarId));
     const dayView = main.createDiv("chronicle-day-view");
     const dayHeader = dayView.createDiv("chronicle-day-view-header");
@@ -3295,7 +3204,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
     );
     const numEl = dayHeader.createDiv("chronicle-day-num-large");
     numEl.setText(String(this.currentDate.getDate()));
-    if (dateStr === todayStr) numEl.addClass("today");
+    if (dateStr === todayStr2) numEl.addClass("today");
     const shelf = dayView.createDiv("chronicle-day-allday-shelf");
     shelf.createDiv("chronicle-day-allday-label").setText("all-day");
     const shelfContent = shelf.createDiv("chronicle-day-allday-content");
@@ -3306,7 +3215,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
     const eventCol = timeArea.createDiv("chronicle-day-single-events");
     eventCol.style.height = `${24 * HOUR_HEIGHT}px`;
     for (let h = 0; h < 24; h++) {
-      timeLabels.createDiv("chronicle-time-slot").setText(this.formatHour(h));
+      timeLabels.createDiv("chronicle-time-slot").setText(formatHour12(h));
       const line = eventCol.createDiv("chronicle-hour-line");
       line.style.top = `${h * HOUR_HEIGHT}px`;
     }
@@ -3333,12 +3242,10 @@ var CalendarView = class extends import_obsidian11.ItemView {
       })() : 0;
       const pill = eventCol.createDiv("chronicle-task-day-pill");
       pill.style.top = `${top}px`;
-      pill.style.backgroundColor = "#FF3B3022";
-      pill.style.borderLeft = "3px solid #FF3B30";
-      pill.style.color = "#FF3B30";
+      pill.addClass("chronicle-task-pill");
       pill.setText("\u2713 " + task.title);
     });
-    if (dateStr === todayStr) {
+    if (dateStr === todayStr2) {
       const now = /* @__PURE__ */ new Date();
       const top = (now.getHours() + now.getMinutes() / 60) * HOUR_HEIGHT;
       const line = eventCol.createDiv("chronicle-now-line");
@@ -3423,7 +3330,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
     pill.style.color = color;
     pill.createDiv("chronicle-event-pill-title").setText(event.title);
     if (height > 36 && event.startTime)
-      pill.createDiv("chronicle-event-pill-time").setText(this.formatTime(event.startTime));
+      pill.createDiv("chronicle-event-pill-time").setText(formatTime12(event.startTime));
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
       new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
@@ -3457,16 +3364,6 @@ var CalendarView = class extends import_obsidian11.ItemView {
     var _a, _b;
     if (!calendarId) return true;
     return (_b = (_a = this.calendarManager.getById(calendarId)) == null ? void 0 : _a.isVisible) != null ? _b : true;
-  }
-  formatHour(h) {
-    if (h === 0) return "12 AM";
-    if (h < 12) return `${h} AM`;
-    if (h === 12) return "12 PM";
-    return `${h - 12} PM`;
-  }
-  formatTime(timeStr) {
-    const [h, m] = timeStr.split(":").map(Number);
-    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
   }
 };
 
