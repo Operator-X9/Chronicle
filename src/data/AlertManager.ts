@@ -175,15 +175,15 @@ export class AlertManager {
   }
 
   private buildReminderBody(dueDate: string | undefined, dueTime: string | undefined, alert: AlertOffset): string {
-    if (!dueDate) return dueTime ? `Due at ${this.formatTime(dueTime)}` : "Due now";
+    if (!dueDate) return dueTime ? `At ${this.formatTime(dueTime)}` : "Now";
     const dateLabel = new Date(dueDate + "T00:00:00").toLocaleDateString("en-US", {
       weekday: "short", month: "short", day: "numeric"
     });
     if (dueTime) {
-      if (alert === "at-time") return `Due at ${this.formatTime(dueTime)}`;
-      return `${this.offsetLabel(alert)} — due at ${this.formatTime(dueTime)}`;
+      if (alert === "at-time") return `At ${this.formatTime(dueTime)}`;
+      return `${this.offsetLabel(alert)} — at ${this.formatTime(dueTime)}`;
     }
-    return `Due ${dateLabel}`;
+    return dateLabel;
   }
 
   private offsetLabel(offset: AlertOffset): string {

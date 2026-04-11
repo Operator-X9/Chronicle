@@ -643,17 +643,17 @@ var AlertManager = class {
     return `${this.offsetLabel(alert)} \u2014 starts at ${this.formatTime(startTime)}`;
   }
   buildReminderBody(dueDate, dueTime, alert) {
-    if (!dueDate) return dueTime ? `Due at ${this.formatTime(dueTime)}` : "Due now";
+    if (!dueDate) return dueTime ? `At ${this.formatTime(dueTime)}` : "Now";
     const dateLabel = (/* @__PURE__ */ new Date(dueDate + "T00:00:00")).toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric"
     });
     if (dueTime) {
-      if (alert === "at-time") return `Due at ${this.formatTime(dueTime)}`;
-      return `${this.offsetLabel(alert)} \u2014 due at ${this.formatTime(dueTime)}`;
+      if (alert === "at-time") return `At ${this.formatTime(dueTime)}`;
+      return `${this.offsetLabel(alert)} \u2014 at ${this.formatTime(dueTime)}`;
     }
-    return `Due ${dateLabel}`;
+    return dateLabel;
   }
   offsetLabel(offset) {
     var _a;
@@ -1749,7 +1749,7 @@ var ReminderDetailPopup = class extends import_obsidian6.Modal {
       const datePart = r.dueDate ? formatDate(r.dueDate) : "";
       const timePart = r.dueTime ? this.fmtTime(r.dueTime) : "";
       const display = [datePart, timePart].filter(Boolean).join("  \xB7  ");
-      this.row(body, "Due", display);
+      this.row(body, "At", display);
     }
     if (r.location) this.row(body, "Location", r.location);
     if (r.listId) {

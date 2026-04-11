@@ -47,7 +47,7 @@ export class ReminderDetailPopup extends Modal {
       const datePart = r.dueDate ? formatDate(r.dueDate) : "";
       const timePart = r.dueTime ? this.fmtTime(r.dueTime) : "";
       const display  = [datePart, timePart].filter(Boolean).join("  ·  ");
-      this.row(body, "Due", display);
+      this.row(body, "At", display);
     }
 
     if (r.location) this.row(body, "Location", r.location);
