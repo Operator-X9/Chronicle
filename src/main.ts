@@ -131,6 +131,7 @@ export default class ChroniclePlugin extends Plugin {
   }
 
   onunload() {
+    this.alertManager.stop();
     this.app.workspace.detachLeavesOfType(REMINDER_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);

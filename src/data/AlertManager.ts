@@ -134,25 +134,28 @@ export class AlertManager {
   public fire(key: string, title: string, body: string, type: "event" | "reminder") {
     this.firedAlerts.add(key);
     const settings  = this.getSettings();
-    const doMacOS   = settings.notifMacOS ?? true;
+    const doNotif   = settings.notifMacOS ?? true;
     const doSound   = settings.notifSound ?? true;
     const rawSound  = type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass");
-    const soundName = (doSound && rawSound !== "none") ? rawSound : "";
 
-    if (doMacOS) {
+    // ── Web Notification (shows as "Obsidian" in macOS Notification Centre) ──
+    if (doNotif && Notification.permission === "granted") {
+      new Notification(`Chronicle — ${type === "event" ? "Event" : "Reminder"}`, {
+        body:   `${title}\n${body}`,
+        silent: true,   // we control sound separately below
+      });
+      console.log("[Chronicle] Web Notification sent");
+    }
+
+    // ── Sound via afplay (macOS system sounds, independent of notification) ──
+    if (doSound && rawSound && rawSound !== "none") {
       try {
         const { exec } = (window as any).require("child_process");
-        const t = `Chronicle — ${type === "event" ? "Event" : "Reminder"}`;
-        const b = `${title} — ${body}`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-        const soundClause = soundName ? ` sound name "${soundName}"` : "";
-        exec(`osascript -e 'display notification "${b}" with title "${t}"${soundClause}'`,
-          (err: any) => {
-            if (err) console.log("[Chronicle] osascript failed:", err.message);
-            else     console.log("[Chronicle] osascript notification sent");
-          }
+        exec(`afplay "/System/Library/Sounds/${rawSound}.aiff"`,
+          (err: any) => { if (err) console.log("[Chronicle] afplay failed:", err.message); }
         );
       } catch (err) {
-        console.log("[Chronicle] osascript unavailable:", err);
+        console.log("[Chronicle] afplay unavailable:", err);
       }
     }
   }

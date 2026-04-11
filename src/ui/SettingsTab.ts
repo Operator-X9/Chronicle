@@ -93,8 +93,8 @@ export class ChronicleSettingsTab extends PluginSettingTab {
     this.subHeader(el, "Notifications");
 
     new Setting(el)
-      .setName("macOS system notification")
-      .setDesc("Show a native macOS notification banner when an alert fires.")
+      .setName("Show notifications")
+      .setDesc("Show a macOS notification banner (via Obsidian) when an alert fires.")
       .addToggle(t => t
         .setValue(this.plugin.settings.notifMacOS ?? true)
         .onChange(async (value) => {
@@ -236,7 +236,7 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       .setDesc("Alert offset applied to new events by default.")
       .addDropdown(drop => this.addAlertOptions(drop)
         .setValue(this.plugin.settings.defaultAlert)
-        .onChange(async (value) => {
+        .onChange(async (value: string) => {
           this.plugin.settings.defaultAlert = value as AlertOffset;
           await this.plugin.saveSettings();
         })
@@ -247,7 +247,7 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       .setDesc("macOS system sound played when an event alert fires.")
       .addDropdown(drop => this.addSoundOptions(drop)
         .setValue(this.plugin.settings.notifSoundEvent ?? "Glass")
-        .onChange(async (value) => {
+        .onChange(async (value: string) => {
           this.plugin.settings.notifSoundEvent = value;
           await this.plugin.saveSettings();
         })
@@ -408,7 +408,7 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       .setDesc("Alert offset applied to new reminders by default.")
       .addDropdown(drop => this.addAlertOptions(drop)
         .setValue(this.plugin.settings.defaultAlert)
-        .onChange(async (value) => {
+        .onChange(async (value: string) => {
           this.plugin.settings.defaultAlert = value as AlertOffset;
           await this.plugin.saveSettings();
         })

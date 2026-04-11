@@ -159,7 +159,7 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
     );
     this.divider(el);
     this.subHeader(el, "Notifications");
-    new import_obsidian.Setting(el).setName("macOS system notification").setDesc("Show a native macOS notification banner when an alert fires.").addToggle(
+    new import_obsidian.Setting(el).setName("Show notifications").setDesc("Show a macOS notification banner (via Obsidian) when an alert fires.").addToggle(
       (t) => {
         var _a;
         return t.setValue((_a = this.plugin.settings.notifMacOS) != null ? _a : true).onChange(async (value) => {
@@ -599,25 +599,29 @@ var AlertManager = class {
     var _a, _b, _c, _d;
     this.firedAlerts.add(key);
     const settings = this.getSettings();
-    const doMacOS = (_a = settings.notifMacOS) != null ? _a : true;
+    const doNotif = (_a = settings.notifMacOS) != null ? _a : true;
     const doSound = (_b = settings.notifSound) != null ? _b : true;
     const rawSound = type === "event" ? (_c = settings.notifSoundEvent) != null ? _c : "Glass" : (_d = settings.notifSoundReminder) != null ? _d : "Glass";
-    const soundName = doSound && rawSound !== "none" ? rawSound : "";
-    if (doMacOS) {
+    if (doNotif && Notification.permission === "granted") {
+      new Notification(`Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`, {
+        body: `${title}
+${body}`,
+        silent: true
+        // we control sound separately below
+      });
+      console.log("[Chronicle] Web Notification sent");
+    }
+    if (doSound && rawSound && rawSound !== "none") {
       try {
         const { exec } = window.require("child_process");
-        const t = `Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`;
-        const b = `${title} \u2014 ${body}`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-        const soundClause = soundName ? ` sound name "${soundName}"` : "";
         exec(
-          `osascript -e 'display notification "${b}" with title "${t}"${soundClause}'`,
+          `afplay "/System/Library/Sounds/${rawSound}.aiff"`,
           (err) => {
-            if (err) console.log("[Chronicle] osascript failed:", err.message);
-            else console.log("[Chronicle] osascript notification sent");
+            if (err) console.log("[Chronicle] afplay failed:", err.message);
           }
         );
       } catch (err) {
-        console.log("[Chronicle] osascript unavailable:", err);
+        console.log("[Chronicle] afplay unavailable:", err);
       }
     }
   }
@@ -3514,6 +3518,7 @@ var ChroniclePlugin = class extends import_obsidian12.Plugin {
     ).open();
   }
   onunload() {
+    this.alertManager.stop();
     this.app.workspace.detachLeavesOfType(REMINDER_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);
