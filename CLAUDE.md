@@ -175,9 +175,13 @@ defaultAlert:          AlertOffset
 startOfWeek:           0 | 1 | 6       // 0=Sun, 1=Mon, 6=Sat
 timeFormat:            "12h" | "24h"
 defaultCalendarView:   "day"|"week"|"month"|"year"
-showTodayCount:        boolean
-showScheduledCount:    boolean
-showFlaggedCount:      boolean
+showTodayList:         boolean          // renamed from showTodayCount
+showScheduledList:     boolean          // renamed from showScheduledCount
+showAllList:           boolean
+showFlaggedList:       boolean          // Flagged smart list (no settings toggle — always visible if used)
+showCompletedList:     boolean          // renamed from showCompletedCount
+smartListOrder:        string[]         // drag-to-reorder persistence, e.g. ["today","scheduled","all","flagged","completed"]
+smartListColors:       Record<string, string>  // per-tile hex color, e.g. { today: "#FF3B30", ... }
 notifMacOS:            boolean          // Native macOS notification
 notifObsidian:         boolean          // In-app Obsidian toast
 notifSound:            boolean          // Two-tone chime
@@ -185,7 +189,6 @@ notifEvents:           boolean          // Alerts for events
 notifTasks:            boolean          // Alerts for tasks
 defaultEventDuration:  number           // minutes
 density:               "compact"|"comfortable"
-showCompletedCount:    boolean
 showTaskCountSubtitle: boolean
 defaultCustomFields:   {key, type}[]    // Reserved, UI removed
 ```
@@ -246,8 +249,12 @@ Four horizontal tabs matching Obsidian's native tab style:
 
 - **General** — folder paths, time format, notification channel toggles, test button
 - **Calendar** — start of week, default view, default calendar, event duration,
-  event alert, calendar management (add/rename/recolor/delete)
-- **Reminders** — default status/priority/alert/calendar, smart list visibility
+  event alert, calendar management (add/rename/recolor/delete). No colored dot
+  shown next to calendar rows (removed as redundant).
+- **Reminders** — default status/priority/alert/calendar, smart list visibility.
+  Smart List Visibility section: per-tile color picker + show/hide toggle for each
+  tile (Today, Scheduled, All, Completed). No colored dot shown next to rows
+  (removed as redundant). "Show Flagged List" toggle was removed.
 - **Appearance** — density, show/hide subtitle and completed count
 
 ---
@@ -315,9 +322,21 @@ Per-channel and per-type toggles in settings.
 Four-tab settings panel inside Obsidian native settings.
 Calendar management with custom color picker.
 
-### Phase 7 — Remaining (not yet built)
+### Phase 7 — Polish pass ✅ (ongoing)
+- Completed smart list tile (moved from sidebar row into the smart list tile grid)
+- Smart list visibility toggles wired to actual show/hide behavior
+- Drag-to-reorder smart list tiles (HTML5 drag-and-drop, persisted to settings)
+- Per-tile color pickers in settings Smart List Visibility section
+- Smart list and regular list title text always `var(--text-normal)` (not tile color)
+- Rounded corners on both Reminders and Calendar main panes
+- Full theme compatibility: entire CSS rewritten to use Obsidian CSS variables
+  (colors, fonts, border-radius, interactive states — responds to themes and accent color)
+- "New Reminder" button uses `--interactive-normal` (matches all other plugin buttons)
+- Removed redundant colored dots from My Lists, My Calendars, and Smart List rows in settings
+- "Show Flagged List" toggle removed from settings
+
+### Phase 8 — Remaining (not yet built)
 - Events linking to tasks (action items for a meeting)
-- Polish pass — tightening UI details
 
 ---
 
@@ -338,6 +357,28 @@ modals. Only available in full-page forms. This keeps the popup lightweight.
 
 **esbuild context API** — uses `esbuild.context()` + `context.watch()` instead
 of the deprecated `build({ watch: true })` pattern. Required for esbuild 0.17+.
+
+**Smart list tiles are data-driven** — built from an `allTiles` map keyed by id
+(`today`, `scheduled`, `all`, `flagged`, `completed`). Order comes from
+`settings.smartListOrder`, colors from `settings.smartListColors`, visibility
+from per-list boolean flags. Drag-and-drop reorders `smartListOrder` and saves.
+
+**Theme compatibility via CSS variables** — `styles/main.css` uses no hardcoded
+colors or fonts. All values come from Obsidian's CSS custom properties:
+`--color-red/green/orange`, `--interactive-accent`, `--text-on-accent`,
+`--font-interface`, `--radius-s/m/l`, `--background-primary/secondary`,
+`--text-normal/muted/faint`, `--interactive-normal/hover`. Alpha variants use
+`color-mix(in srgb, var(--color-X) N%, transparent)` — supported in Obsidian's
+Chromium/Electron. Tile count/label text and toggle thumbs intentionally keep
+`#fff` as they are on user-set or semantic backgrounds.
+
+**Layout rounded corners** — `.chronicle-layout` / `.chronicle-cal-layout` have
+`background: var(--background-secondary)` and `padding: 8px 8px 8px 0`. The
+main pane has `border-radius: var(--radius-m)`, making the secondary color show
+as a backdrop — mirroring how the Obsidian settings modal works.
+
+**`experimental` branch** — created for testing major changes. Merges back to
+`main` via `git checkout main && git merge experimental && git push`.
 
 ---
 
