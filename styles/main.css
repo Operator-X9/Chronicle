@@ -2,7 +2,7 @@
 .chronicle-app {
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-interface);
 }
 
 .chronicle-layout {
@@ -40,7 +40,7 @@
 }
 
 .chronicle-tile {
-  border-radius: 12px;
+  border-radius: var(--radius-l);
   padding: 10px 10px 8px;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
@@ -99,7 +99,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   cursor: pointer;
   user-select: none;
   transition: background 0.1s;
@@ -167,7 +167,7 @@
 .chronicle-reminder-card-group {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 12px;
+  border-radius: var(--radius-l);
   box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
   overflow: hidden;
   margin-bottom: 6px;
@@ -281,7 +281,7 @@
 }
 
 .chronicle-reminder-date.overdue {
-  color: #FF3B30;
+  color: var(--color-red);
 }
 
 .chronicle-reminder-cal-dot {
@@ -298,7 +298,7 @@
 
 /* ── Flag ────────────────────────────────────────────────────────────────── */
 .chronicle-flag {
-  color: #FF9500;
+  color: var(--color-orange);
   font-size: 15px;
   flex-shrink: 0;
 }
@@ -345,7 +345,7 @@
   height: 24px;
   border-radius: 50%;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -375,7 +375,7 @@
   position: fixed;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
+  border-radius: var(--radius-l);
   padding: 4px;
   z-index: 9999;
   min-width: 160px;
@@ -385,21 +385,21 @@
 .chronicle-context-item {
   padding: 8px 12px;
   font-size: 13px;
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   cursor: pointer;
   color: var(--text-normal);
 }
 
 .chronicle-context-item:hover { background: var(--background-modifier-hover); }
 
-.chronicle-context-delete { color: #FF3B30; }
-.chronicle-context-delete:hover { background: rgba(255,59,48,0.1); }
+.chronicle-context-delete { color: var(--color-red); }
+.chronicle-context-delete:hover { background: color-mix(in srgb, var(--color-red) 10%, transparent); }
 
 .cf-btn-delete {
   background: none;
-  color: #FF3B30;
-  border: 1px solid #FF3B3066;
-  border-radius: 8px;
+  color: var(--color-red);
+  border: 1px solid color-mix(in srgb, var(--color-red) 40%, transparent);
+  border-radius: var(--radius-m);
   padding: 8px 14px;
   font-size: 14px;
   cursor: pointer;
@@ -408,7 +408,7 @@
   margin-right: auto;
 }
 
-.cf-btn-delete:hover { background: rgba(255,59,48,0.08); }
+.cf-btn-delete:hover { background: color-mix(in srgb, var(--color-red) 8%, transparent); }
 
 /* ══════════════════════════════════════════════════════════════════════════
    TASK FORM — full page
@@ -418,7 +418,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-interface);
   background: var(--background-primary);
 }
 
@@ -466,7 +466,7 @@
 .cf-input {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   padding: 10px 12px;
   font-size: 14px;
   color: var(--text-normal);
@@ -481,7 +481,7 @@
 }
 
 .cf-input.cf-error {
-  border-color: #FF3B30;
+  border-color: var(--color-red);
   animation: cf-shake 0.25s ease;
 }
 
@@ -500,7 +500,7 @@
 .cf-select {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   padding: 10px 12px;
   padding-bottom: 11px;
   font-size: 14px;
@@ -521,7 +521,7 @@
 .cf-textarea {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   padding: 10px 12px;
   font-size: 14px;
   color: var(--text-normal);
@@ -569,10 +569,10 @@
 }
 
 .cf-btn-primary {
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   padding: 8px 18px;
   font-size: 14px;
   font-weight: 600;
@@ -588,7 +588,7 @@
   background: none;
   color: var(--text-muted);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   padding: 8px 14px;
   font-size: 14px;
   cursor: pointer;
@@ -605,11 +605,11 @@
   font-size: 18px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-s);
   line-height: 1;
 }
 
-.cf-btn-icon:hover { background: var(--background-modifier-hover); color: #FF3B30; }
+.cf-btn-icon:hover { background: var(--background-modifier-hover); color: var(--color-red); }
 .cf-add-field { align-self: flex-start; }
 
 /* ── Toolbar buttons ───────────────────────────────────────────────────── */
@@ -628,7 +628,7 @@
 .chronicle-toolbar-btn {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
@@ -641,19 +641,19 @@
 .chronicle-toolbar-btn:hover { background: var(--background-modifier-hover); }
 
 .chronicle-toolbar-btn-primary {
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   border-color: transparent;
 }
 
-.chronicle-toolbar-btn-primary:hover { opacity: 0.88; background: var(--color-accent); }
+.chronicle-toolbar-btn-primary:hover { opacity: 0.88; background: var(--interactive-accent); }
 
 /* ══════════════════════════════════════════════════════════════════════════
    EVENT MODAL
 ══════════════════════════════════════════════════════════════════════════ */
 .chronicle-event-modal {
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-interface);
 }
 
 .modal:has(.chronicle-event-modal) {
@@ -665,7 +665,7 @@
   flex-direction: column;
   max-height: 80vh;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-interface);
 }
 
 .cem-header {
@@ -717,7 +717,7 @@
   flex-shrink: 0;
 }
 
-.cem-toggle:checked { background: var(--color-accent); }
+.cem-toggle:checked { background: var(--interactive-accent); }
 
 .cem-toggle::after {
   content: '';
@@ -750,10 +750,10 @@
 
 .chronicle-new-reminder-btn {
   width: 100%;
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-l);
   padding: 10px;
   font-size: 14px;
   font-weight: 600;
@@ -773,7 +773,7 @@
 .chronicle-cal-app {
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-interface);
 }
 
 .chronicle-cal-layout {
@@ -859,8 +859,8 @@
 }
 
 .chronicle-mini-day:hover { background: var(--background-modifier-hover); }
-.chronicle-mini-day.today { background: #378ADD; color: #fff; font-weight: 600; }
-.chronicle-mini-day.selected { background: var(--color-accent); color: #fff; }
+.chronicle-mini-day.today { background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600; }
+.chronicle-mini-day.selected { background: var(--color-accent); color: var(--text-on-accent); }
 .chronicle-mini-day-empty { cursor: default; }
 
 /* ── Calendar toggle ─────────────────────────────────────────────────── */
@@ -869,7 +869,7 @@
   align-items: center;
   gap: 8px;
   padding: 5px 4px;
-  border-radius: 7px;
+  border-radius: var(--radius-m);
 }
 
 .chronicle-cal-toggle {
@@ -898,7 +898,7 @@
 .chronicle-cal-nav-btn {
   background: none;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   color: var(--text-muted);
   cursor: pointer;
   font-size: 16px;
@@ -912,7 +912,7 @@
 .chronicle-cal-today-btn {
   background: none;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   color: var(--text-normal);
   cursor: pointer;
   font-size: 13px;
@@ -934,7 +934,7 @@
 .chronicle-view-pills {
   display: flex;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   overflow: hidden;
 }
 
@@ -1030,8 +1030,8 @@
 }
 
 .chronicle-day-num.today {
-  background: #378ADD;
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   font-weight: 600;
 }
 
@@ -1064,7 +1064,7 @@
   position: absolute;
   left: 2px;
   right: 2px;
-  border-radius: 5px;
+  border-radius: var(--radius-s);
   padding: 3px 6px;
   overflow: hidden;
   cursor: pointer;
@@ -1090,7 +1090,7 @@
 }
 
 .chronicle-event-pill-allday {
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   padding: 2px 5px;
   font-size: 11px;
   font-weight: 500;
@@ -1107,7 +1107,7 @@
   position: absolute;
   left: 2px;
   right: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   padding: 2px 5px;
   font-size: 11px;
   font-weight: 500;
@@ -1123,7 +1123,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: #FF3B30;
+  background: var(--color-red);
   pointer-events: none;
   z-index: 3;
 }
@@ -1136,7 +1136,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #FF3B30;
+  background: var(--color-red);
 }
 
 /* ── Month grid ───────────────────────────────────────────────────────── */
@@ -1175,8 +1175,8 @@
 .chronicle-month-cell:hover { background: var(--background-modifier-hover); }
 
 .chronicle-month-cell.today .chronicle-month-cell-num {
-  background: #378ADD;
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   border-radius: 50%;
   width: 24px;
   height: 24px;
@@ -1251,8 +1251,8 @@
 }
 
 .chronicle-day-num-large.today {
-  background: #378ADD;
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
 }
 
 .chronicle-day-single-area {
@@ -1337,7 +1337,7 @@
 .chronicle-year-month-card {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
+  border-radius: var(--radius-l);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -1379,8 +1379,8 @@
 .chronicle-year-day:hover { background: var(--background-modifier-hover); }
 
 .chronicle-year-day.today {
-  background: #378ADD;
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   font-weight: 600;
 }
 
@@ -1397,7 +1397,7 @@
 }
 
 .chronicle-year-day.has-reminder::after {
-  background: #FF3B30;
+  background: var(--color-red);
 }
 
 .chronicle-year-day-empty {
@@ -1426,15 +1426,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #34C759;
+  color: var(--color-green);
   flex-shrink: 0;
 }
 
 .chronicle-clear-btn {
   background: none;
-  border: 1px solid #FF3B3066;
-  border-radius: 7px;
-  color: #FF3B30;
+  border: 1px solid color-mix(in srgb, var(--color-red) 40%, transparent);
+  border-radius: var(--radius-m);
+  color: var(--color-red);
   font-size: 12px;
   font-weight: 500;
   padding: 3px 10px;
@@ -1443,7 +1443,7 @@
   transition: background 0.1s;
 }
 
-.chronicle-clear-btn:hover { background: rgba(255,59,48,0.08); }
+.chronicle-clear-btn:hover { background: color-mix(in srgb, var(--color-red) 8%, transparent); }
 
 .chronicle-archive-actions {
   display: flex;
@@ -1455,7 +1455,7 @@
 .chronicle-archive-btn {
   background: none;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 500;
@@ -1470,15 +1470,21 @@
   color: var(--text-normal);
 }
 
-.chronicle-archive-btn-delete { color: #FF3B30; border-color: #FF3B3044; }
-.chronicle-archive-btn-delete:hover { background: rgba(255,59,48,0.08); color: #FF3B30; }
+.chronicle-archive-btn-delete {
+  color: var(--color-red);
+  border-color: color-mix(in srgb, var(--color-red) 27%, transparent);
+}
+.chronicle-archive-btn-delete:hover {
+  background: color-mix(in srgb, var(--color-red) 8%, transparent);
+  color: var(--color-red);
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    SETTINGS PAGE
 ══════════════════════════════════════════════════════════════════════════ */
 
 .chronicle-settings {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-interface);
 }
 
 /* ── Tab bar — matches Obsidian's native horizontal tab style ─────────── */
@@ -1559,7 +1565,7 @@
 .cs-text-input {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   padding: 7px 10px;
   font-size: 13px;
   color: var(--text-normal);
@@ -1576,7 +1582,7 @@
 .cs-select {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   padding: 7px 10px;
   font-size: 13px;
   color: var(--text-normal);
@@ -1585,10 +1591,10 @@
 }
 
 .cs-btn-primary {
-  background: var(--color-accent);
-  color: #fff;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   padding: 7px 14px;
   font-size: 13px;
   font-weight: 500;
@@ -1603,7 +1609,7 @@
 .cs-btn-ghost {
   background: none;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   padding: 6px 12px;
   font-size: 13px;
   color: var(--text-muted);
@@ -1621,18 +1627,18 @@
   font-size: 18px;
   cursor: pointer;
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-s);
   line-height: 1;
 }
 
-.cs-btn-icon:hover { background: var(--background-modifier-hover); color: #FF3B30; }
+.cs-btn-icon:hover { background: var(--background-modifier-hover); color: var(--color-red); }
 
 .cs-color-picker {
   width: 36px;
   height: 36px;
   padding: 2px;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   cursor: pointer;
   background: none;
   flex-shrink: 0;
@@ -1676,7 +1682,6 @@
   flex: 1;
 }
 
-
 .cdp-badge-row {
   display: flex;
   gap: 6px;
@@ -1695,14 +1700,14 @@
 
 /* Status badge colors */
 .cdp-status-todo        { background: var(--background-modifier-hover); color: var(--text-muted); }
-.cdp-status-in-progress { background: rgba(0,122,255,0.12); color: var(--color-accent); }
-.cdp-status-done        { background: rgba(52,199,89,0.12); color: #34c759; }
+.cdp-status-in-progress { background: color-mix(in srgb, var(--interactive-accent) 12%, transparent); color: var(--color-accent); }
+.cdp-status-done        { background: color-mix(in srgb, var(--color-green) 12%, transparent); color: var(--color-green); }
 .cdp-status-cancelled   { background: var(--background-modifier-hover); color: var(--text-faint); text-decoration: line-through; }
 
 /* Priority badge colors */
-.cdp-priority-low    { background: rgba(52,199,89,0.12); color: #34c759; }
-.cdp-priority-medium { background: rgba(255,159,10,0.12); color: #ff9f0a; }
-.cdp-priority-high   { background: rgba(255,59,48,0.12); color: #ff3b30; }
+.cdp-priority-low    { background: color-mix(in srgb, var(--color-green) 12%, transparent);  color: var(--color-green); }
+.cdp-priority-medium { background: color-mix(in srgb, var(--color-orange) 12%, transparent); color: var(--color-orange); }
+.cdp-priority-high   { background: color-mix(in srgb, var(--color-red) 12%, transparent);    color: var(--color-red); }
 
 .cdp-body {
   padding: 0 20px 8px;
@@ -1810,7 +1815,7 @@
   align-items: center;
   gap: 8px;
   padding: 5px 8px;
-  border-radius: 7px;
+  border-radius: var(--radius-m);
   background: var(--background-secondary);
 }
 
@@ -1824,7 +1829,7 @@
 
 .ctl-status-todo        { color: var(--text-muted); background: transparent; }
 .ctl-status-in-progress { color: var(--color-accent); background: var(--color-accent); }
-.ctl-status-done        { color: #34c759; background: #34c759; }
+.ctl-status-done        { color: var(--color-green); background: var(--color-green); }
 .ctl-status-cancelled   { color: var(--text-faint); background: transparent; opacity: 0.4; }
 
 .ctl-title {
@@ -1844,7 +1849,7 @@
   font-size: 16px;
   line-height: 1;
   padding: 0 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-s);
   flex-shrink: 0;
 }
 
@@ -1867,7 +1872,7 @@
   right: 0;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   box-shadow: 0 4px 16px rgba(0,0,0,0.14);
   z-index: 100;
   overflow: hidden;
@@ -1916,6 +1921,7 @@
 .chronicle-app[data-density="comfortable"] .chronicle-reminder-row {
   padding: 10px 24px;
 }
+
 /* ── Tag field (ctf-) ─────────────────────────────────────────────────────── */
 
 .ctf-inner {
@@ -1928,7 +1934,7 @@
   padding: 4px 8px;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
+  border-radius: var(--radius-s);
   cursor: text;
 }
 
@@ -1946,11 +1952,11 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px 2px 10px;
-  background: var(--color-accent);
+  background: var(--interactive-accent);
   border-radius: 99px;
   font-size: 12px;
   font-weight: 500;
-  color: white;
+  color: var(--text-on-accent);
   white-space: nowrap;
 }
 
@@ -1986,7 +1992,7 @@
   right: 0;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-m);
   box-shadow: 0 4px 16px rgba(0,0,0,0.14);
   z-index: 100;
   overflow: hidden;
