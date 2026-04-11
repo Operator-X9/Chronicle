@@ -11,7 +11,7 @@ export interface ChronicleCalendar {
   createdAt: string;
 }
 
-// ─── Lists (task organisation) ───────────────────────────────────────────────
+// ─── Lists (reminder organisation) ───────────────────────────────────────────
 
 export interface ChronicleList {
   id: string;
@@ -20,10 +20,10 @@ export interface ChronicleList {
   createdAt: string;
 }
 
-// ─── Tasks ───────────────────────────────────────────────────────────────────
+// ─── Reminders ───────────────────────────────────────────────────────────────
 
-export type TaskStatus = "todo" | "in-progress" | "done" | "cancelled";
-export type TaskPriority = "none" | "low" | "medium" | "high";
+export type ReminderStatus = "todo" | "in-progress" | "done" | "cancelled";
+export type ReminderPriority = "none" | "low" | "medium" | "high";
 
 export interface TimeEntry {
   startTime: string;   // ISO 8601
@@ -35,12 +35,12 @@ export interface CustomField {
   value: string | number | boolean;
 }
 
-export interface ChronicleTask {
+export interface ChronicleReminder {
   // --- Core ---
   id: string;
   title: string;
-  status: TaskStatus;
-  priority: TaskPriority;
+  status: ReminderStatus;
+  priority: ReminderPriority;
 
   // --- Scheduling ---
   dueDate?: string;       // YYYY-MM-DD
@@ -98,7 +98,7 @@ export interface ChronicleEvent {
   tags?: string[];
 
   // --- Connections ---
-  linkedTaskIds: string[];   // Chronicle task IDs
+  linkedReminderIds: string[];   // Chronicle reminder IDs
 
   // --- Meta ---
   createdAt: string;
@@ -109,20 +109,20 @@ export interface ChronicleEvent {
 
 export interface ChronicleSettings {
   // Folder paths
-  tasksFolder: string;
+  remindersFolder: string;
   eventsFolder: string;
 
   // Calendars — for events (stored in settings, not as files)
   calendars: ChronicleCalendar[];
   defaultCalendarId: string;
 
-  // Lists — for tasks (stored in settings, not as files)
+  // Lists — for reminders (stored in settings, not as files)
   lists: ChronicleList[];
   defaultListId: string;
 
   // Defaults
-  defaultTaskStatus: TaskStatus;
-  defaultTaskPriority: TaskPriority;
+  defaultReminderStatus: ReminderStatus;
+  defaultReminderPriority: ReminderPriority;
   defaultAlert: AlertOffset;
 
   // Display
@@ -140,7 +140,7 @@ export interface ChronicleSettings {
   notifObsidian: boolean;
   notifSound: boolean;
   notifEvents: boolean;
-  notifTasks: boolean;
+  notifReminders: boolean;
 
   // Events
   defaultEventDuration: number;
@@ -148,14 +148,14 @@ export interface ChronicleSettings {
   // Appearance
   density: "compact" | "comfortable";
   showCompletedCount: boolean;
-  showTaskCountSubtitle: boolean;
+  showReminderCountSubtitle: boolean;
 
   // Custom field templates
   defaultCustomFields: { key: string; type: "text" | "number" | "date" | "checkbox" }[];
 }
 
 export const DEFAULT_SETTINGS: ChronicleSettings = {
-  tasksFolder: "Chronicle/Tasks",
+  remindersFolder: "Chronicle/Reminders",
   eventsFolder: "Chronicle/Events",
   calendars: [
     { id: "personal", name: "Personal", color: "#378ADD", isVisible: true, createdAt: new Date().toISOString() },
@@ -167,8 +167,8 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
     { id: "work",     name: "Work",     color: "#34C759", createdAt: new Date().toISOString() },
   ],
   defaultListId: "personal",
-  defaultTaskStatus: "todo",
-  defaultTaskPriority: "none",
+  defaultReminderStatus: "todo",
+  defaultReminderPriority: "none",
   defaultAlert: "none",
   startOfWeek: 0,
   timeFormat: "12h",
@@ -180,10 +180,10 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
   notifObsidian: true,
   notifSound: true,
   notifEvents: true,
-  notifTasks: true,
+  notifReminders: true,
   defaultEventDuration: 60,
   density: "comfortable",
   showCompletedCount: true,
-  showTaskCountSubtitle: true,
+  showReminderCountSubtitle: true,
   defaultCustomFields: [],
 };

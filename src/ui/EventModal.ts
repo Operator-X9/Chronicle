@@ -1,14 +1,14 @@
 import { App, Modal } from "obsidian";
 import { EventManager } from "../data/EventManager";
 import { CalendarManager } from "../data/CalendarManager";
-import { TaskManager } from "../data/TaskManager";
+import { ReminderManager } from "../data/ReminderManager";
 import { ChronicleEvent, AlertOffset } from "../types";
 import { buildTagField } from "./tagField";
 
 export class EventModal extends Modal {
   private eventManager: EventManager;
   private calendarManager: CalendarManager;
-  private taskManager: TaskManager;
+  private reminderManager: ReminderManager;
   private editingEvent: ChronicleEvent | null;
   private onSave?: () => void;
   private onExpand?: (event?: ChronicleEvent) => void;
@@ -17,7 +17,7 @@ export class EventModal extends Modal {
     app: App,
     eventManager: EventManager,
     calendarManager: CalendarManager,
-    taskManager: TaskManager,
+    reminderManager: ReminderManager,
     editingEvent?: ChronicleEvent,
     onSave?: () => void,
     onExpand?: (event?: ChronicleEvent) => void
@@ -25,7 +25,7 @@ export class EventModal extends Modal {
     super(app);
     this.eventManager    = eventManager;
     this.calendarManager = calendarManager;
-    this.taskManager     = taskManager;
+    this.reminderManager = reminderManager;
     this.editingEvent    = editingEvent ?? null;
     this.onSave          = onSave;
     this.onExpand        = onExpand;
@@ -39,9 +39,9 @@ export class EventModal extends Modal {
     const e         = this.editingEvent;
     const calendars = this.calendarManager.getAll();
 
-    // Fetch all tasks upfront for linked-tasks UI
-    const allTasks = await this.taskManager.getAll();
-    let linkedIds: string[] = [...(e?.linkedTaskIds ?? [])];
+    // Fetch all reminders upfront for linked-reminders UI
+    const allReminders = await this.reminderManager.getAll();
+    let linkedIds: string[] = [...(e?.linkedReminderIds ?? [])];
 
     // ── Header ──────────────────────────────────────────────────────────
     const header = contentEl.createDiv("cem-header");
@@ -169,34 +169,34 @@ export class EventModal extends Modal {
     // Tags
     const tagField = buildTagField(this.app, this.field(form, "Tags"), e?.tags ?? []);
 
-    // ── Linked tasks ─────────────────────────────────────────────────────
-    const linkedField = this.field(form, "Linked tasks");
+    // ── Linked reminders ─────────────────────────────────────────────────
+    const linkedField = this.field(form, "Linked reminders");
     const linkedList  = linkedField.createDiv("ctl-list");
 
     const renderLinkedList = () => {
       linkedList.empty();
-      const items = allTasks.filter(t => linkedIds.includes(t.id));
+      const items = allReminders.filter(r => linkedIds.includes(r.id));
       if (items.length === 0) {
-        linkedList.createDiv("ctl-empty").setText("No linked tasks");
+        linkedList.createDiv("ctl-empty").setText("No linked reminders");
       }
-      for (const task of items) {
+      for (const reminder of items) {
         const row = linkedList.createDiv("ctl-item");
-        row.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        row.createSpan({ cls: "ctl-title" }).setText(task.title);
+        row.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        row.createSpan({ cls: "ctl-title" }).setText(reminder.title);
         const unlinkBtn = row.createEl("button", { cls: "ctl-unlink", text: "×" });
         unlinkBtn.addEventListener("click", () => {
-          linkedIds = linkedIds.filter(id => id !== task.id);
+          linkedIds = linkedIds.filter(id => id !== reminder.id);
           renderLinkedList();
         });
       }
     };
     renderLinkedList();
 
-    // Search to link existing tasks
+    // Search to link existing reminders
     const searchWrap    = linkedField.createDiv("ctl-search-wrap");
     const searchInput   = searchWrap.createEl("input", {
       type: "text", cls: "cf-input ctl-search",
-      placeholder: "Search tasks to link…"
+      placeholder: "Search reminders to link…"
     });
     const searchResults = searchWrap.createDiv("ctl-results");
     searchResults.style.display = "none";
@@ -211,19 +211,19 @@ export class EventModal extends Modal {
       searchResults.empty();
       if (!q) { closeSearch(); return; }
 
-      const matches = allTasks
-        .filter(t => !linkedIds.includes(t.id) && t.title.toLowerCase().includes(q))
+      const matches = allReminders
+        .filter(r => !linkedIds.includes(r.id) && r.title.toLowerCase().includes(q))
         .slice(0, 6);
 
       if (matches.length === 0) { closeSearch(); return; }
       searchResults.style.display = "";
-      for (const task of matches) {
+      for (const reminder of matches) {
         const item = searchResults.createDiv("ctl-result-item");
-        item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        item.createSpan({ cls: "ctl-result-title" }).setText(task.title);
+        item.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        item.createSpan({ cls: "ctl-result-title" }).setText(reminder.title);
         item.addEventListener("mousedown", (ev) => {
-          ev.preventDefault(); // keep focus on input so blur doesn't fire first
-          linkedIds.push(task.id);
+          ev.preventDefault();
+          linkedIds.push(reminder.id);
           searchInput.value = "";
           closeSearch();
           renderLinkedList();
@@ -278,7 +278,7 @@ export class EventModal extends Modal {
         tags:               tagField.getTags(),
         notes:              e?.notes,
         linkedNotes:        e?.linkedNotes ?? [],
-        linkedTaskIds:      linkedIds,
+        linkedReminderIds:  linkedIds,
         completedInstances: e?.completedInstances ?? [],
       };
 

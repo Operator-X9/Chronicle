@@ -1,22 +1,22 @@
 import { App, Modal } from "obsidian";
-import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
+import { ChronicleReminder, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
 import { ListManager } from "../data/ListManager";
 
-export class TaskDetailPopup extends Modal {
-  private task: ChronicleTask;
+export class ReminderDetailPopup extends Modal {
+  private reminder: ChronicleReminder;
   private listManager: ListManager;
   private timeFormat: "12h" | "24h";
   private onEdit: () => void;
 
   constructor(
     app: App,
-    task: ChronicleTask,
+    reminder: ChronicleReminder,
     listManager: ListManager,
     timeFormat: "12h" | "24h",
     onEdit: () => void
   ) {
     super(app);
-    this.task        = task;
+    this.reminder    = reminder;
     this.listManager = listManager;
     this.timeFormat  = timeFormat;
     this.onEdit      = onEdit;
@@ -27,57 +27,57 @@ export class TaskDetailPopup extends Modal {
     contentEl.empty();
     contentEl.addClass("cdp-modal");
 
-    const t = this.task;
+    const r = this.reminder;
 
     // ── Header ───────────────────────────────────────────────────────────
     const header = contentEl.createDiv("cdp-header");
-    header.createDiv("cdp-title").setText(t.title);
+    header.createDiv("cdp-title").setText(r.title);
 
     // ── Status + Priority badges ─────────────────────────────────────────
     const badgeRow = contentEl.createDiv("cdp-badge-row");
-    badgeRow.createSpan({ cls: `cdp-badge cdp-status-${t.status}` }).setText(formatStatus(t.status));
-    if (t.priority !== "none") {
-      badgeRow.createSpan({ cls: `cdp-badge cdp-priority-${t.priority}` }).setText(formatPriority(t.priority));
+    badgeRow.createSpan({ cls: `cdp-badge cdp-status-${r.status}` }).setText(formatStatus(r.status));
+    if (r.priority !== "none") {
+      badgeRow.createSpan({ cls: `cdp-badge cdp-priority-${r.priority}` }).setText(formatPriority(r.priority));
     }
 
     // ── Detail rows ──────────────────────────────────────────────────────
     const body = contentEl.createDiv("cdp-body");
 
-    if (t.dueDate) {
-      const timeStr = t.dueTime ? `  ·  ${this.fmtTime(t.dueTime)}` : "";
-      this.row(body, "Due", formatDate(t.dueDate) + timeStr);
+    if (r.dueDate) {
+      const timeStr = r.dueTime ? `  ·  ${this.fmtTime(r.dueTime)}` : "";
+      this.row(body, "Due", formatDate(r.dueDate) + timeStr);
     }
 
-    if (t.location) this.row(body, "Location", t.location);
+    if (r.location) this.row(body, "Location", r.location);
 
-    if (t.listId) {
-      const list = this.listManager.getById(t.listId);
+    if (r.listId) {
+      const list = this.listManager.getById(r.listId);
       if (list) this.listRow(body, list.name, list.color);
     }
 
-    if (t.recurrence) this.row(body, "Repeat", formatRecurrence(t.recurrence));
+    if (r.recurrence) this.row(body, "Repeat", formatRecurrence(r.recurrence));
 
-    if (t.alert && t.alert !== "none") this.row(body, "Alert", formatAlert(t.alert));
+    if (r.alert && r.alert !== "none") this.row(body, "Alert", formatAlert(r.alert));
 
-    if (t.tags.length > 0) this.row(body, "Tags", t.tags.join(", "));
+    if (r.tags.length > 0) this.row(body, "Tags", r.tags.join(", "));
 
-    if (t.projects.length > 0) this.row(body, "Projects", t.projects.join(", "));
+    if (r.projects.length > 0) this.row(body, "Projects", r.projects.join(", "));
 
-    if (t.linkedNotes.length > 0) this.row(body, "Linked notes", t.linkedNotes.join(", "));
+    if (r.linkedNotes.length > 0) this.row(body, "Linked notes", r.linkedNotes.join(", "));
 
-    if (t.timeEstimate) this.row(body, "Estimate", formatDuration(t.timeEstimate));
+    if (r.timeEstimate) this.row(body, "Estimate", formatDuration(r.timeEstimate));
 
-    if (t.notes) {
+    if (r.notes) {
       const notesRow = body.createDiv("cdp-row cdp-notes-row");
       notesRow.createDiv("cdp-row-label").setText("Notes");
       notesRow.createDiv("cdp-row-value cdp-notes-text").setText(
-        t.notes.length > 400 ? t.notes.slice(0, 400) + "…" : t.notes
+        r.notes.length > 400 ? r.notes.slice(0, 400) + "…" : r.notes
       );
     }
 
     // ── Footer ───────────────────────────────────────────────────────────
     const footer = contentEl.createDiv("cdp-footer");
-    footer.createEl("button", { cls: "cf-btn-primary", text: "Edit task" })
+    footer.createEl("button", { cls: "cf-btn-primary", text: "Edit reminder" })
       .addEventListener("click", () => { this.close(); this.onEdit(); });
   }
 
@@ -108,12 +108,12 @@ export class TaskDetailPopup extends Modal {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
-function formatStatus(s: TaskStatus): string {
+function formatStatus(s: ReminderStatus): string {
   return { todo: "To Do", "in-progress": "In Progress", done: "Done", cancelled: "Cancelled" }[s] ?? s;
 }
 
-function formatPriority(p: TaskPriority): string {
-  const map: Partial<Record<TaskPriority, string>> = { low: "Low priority", medium: "Medium priority", high: "High priority" };
+function formatPriority(p: ReminderPriority): string {
+  const map: Partial<Record<ReminderPriority, string>> = { low: "Low priority", medium: "Medium priority", high: "High priority" };
   return map[p] ?? p;
 }
 
@@ -137,7 +137,7 @@ function formatRecurrence(rrule: string): string {
 
 function formatAlert(alert: AlertOffset): string {
   const map: Partial<Record<AlertOffset, string>> = {
-    "at-time": "At time of event",
+    "at-time": "At time of reminder",
     "5min":    "5 minutes before",
     "10min":   "10 minutes before",
     "15min":   "15 minutes before",

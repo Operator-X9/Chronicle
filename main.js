@@ -139,9 +139,9 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
   // ── General ───────────────────────────────────────────────────────────────
   renderGeneral(el) {
     this.subHeader(el, "Storage");
-    new import_obsidian.Setting(el).setName("Tasks folder").setDesc("Where task notes are stored in your vault.").addText(
-      (text) => text.setPlaceholder("Chronicle/Tasks").setValue(this.plugin.settings.tasksFolder).onChange(async (value) => {
-        this.plugin.settings.tasksFolder = value || "Chronicle/Tasks";
+    new import_obsidian.Setting(el).setName("Reminders folder").setDesc("Where reminder notes are stored in your vault.").addText(
+      (text) => text.setPlaceholder("Chronicle/Reminders").setValue(this.plugin.settings.remindersFolder).onChange(async (value) => {
+        this.plugin.settings.remindersFolder = value || "Chronicle/Reminders";
         await this.plugin.saveSettings();
       })
     );
@@ -195,11 +195,11 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
         });
       }
     );
-    new import_obsidian.Setting(el).setName("Alert for tasks").setDesc("Enable alerts for tasks with a due time.").addToggle(
+    new import_obsidian.Setting(el).setName("Alert for reminders").setDesc("Enable alerts for reminders with a due time.").addToggle(
       (t) => {
         var _a;
-        return t.setValue((_a = this.plugin.settings.notifTasks) != null ? _a : true).onChange(async (value) => {
-          this.plugin.settings.notifTasks = value;
+        return t.setValue((_a = this.plugin.settings.notifReminders) != null ? _a : true).onChange(async (value) => {
+          this.plugin.settings.notifReminders = value;
           await this.plugin.saveSettings();
         });
       }
@@ -347,26 +347,26 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
   }
   // ── Reminders ─────────────────────────────────────────────────────────────
   renderReminders(el) {
-    this.subHeader(el, "Task defaults");
+    this.subHeader(el, "Reminder defaults");
     new import_obsidian.Setting(el).setName("Default status").addDropdown(
-      (drop) => drop.addOption("todo", "To do").addOption("in-progress", "In progress").addOption("done", "Done").addOption("cancelled", "Cancelled").setValue(this.plugin.settings.defaultTaskStatus).onChange(async (value) => {
-        this.plugin.settings.defaultTaskStatus = value;
+      (drop) => drop.addOption("todo", "To do").addOption("in-progress", "In progress").addOption("done", "Done").addOption("cancelled", "Cancelled").setValue(this.plugin.settings.defaultReminderStatus).onChange(async (value) => {
+        this.plugin.settings.defaultReminderStatus = value;
         await this.plugin.saveSettings();
       })
     );
     new import_obsidian.Setting(el).setName("Default priority").addDropdown(
-      (drop) => drop.addOption("none", "None").addOption("low", "Low").addOption("medium", "Medium").addOption("high", "High").setValue(this.plugin.settings.defaultTaskPriority).onChange(async (value) => {
-        this.plugin.settings.defaultTaskPriority = value;
+      (drop) => drop.addOption("none", "None").addOption("low", "Low").addOption("medium", "Medium").addOption("high", "High").setValue(this.plugin.settings.defaultReminderPriority).onChange(async (value) => {
+        this.plugin.settings.defaultReminderPriority = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian.Setting(el).setName("Default alert").setDesc("Alert offset applied to new tasks by default.").addDropdown(
+    new import_obsidian.Setting(el).setName("Default alert").setDesc("Alert offset applied to new reminders by default.").addDropdown(
       (drop) => this.addAlertOptions(drop).setValue(this.plugin.settings.defaultAlert).onChange(async (value) => {
         this.plugin.settings.defaultAlert = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian.Setting(el).setName("Default list").setDesc("List assigned to new tasks by default.").addDropdown((drop) => {
+    new import_obsidian.Setting(el).setName("Default list").setDesc("List assigned to new reminders by default.").addDropdown((drop) => {
       var _a;
       drop.addOption("", "None");
       for (const list of this.plugin.listManager.getAll()) {
@@ -429,7 +429,7 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
   // ── Appearance ────────────────────────────────────────────────────────────
   renderAppearance(el) {
     this.subHeader(el, "Layout");
-    new import_obsidian.Setting(el).setName("Task list density").setDesc("Comfortable adds more padding between task rows.").addDropdown(
+    new import_obsidian.Setting(el).setName("Reminder list density").setDesc("Comfortable adds more padding between reminder rows.").addDropdown(
       (drop) => {
         var _a;
         return drop.addOption("compact", "Compact").addOption("comfortable", "Comfortable").setValue((_a = this.plugin.settings.density) != null ? _a : "comfortable").onChange(async (value) => {
@@ -438,7 +438,7 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
         });
       }
     );
-    new import_obsidian.Setting(el).setName("Show completed count").setDesc("Show the number of completed tasks next to the Completed entry.").addToggle(
+    new import_obsidian.Setting(el).setName("Show completed count").setDesc("Show the number of completed reminders next to the Completed entry.").addToggle(
       (t) => {
         var _a;
         return t.setValue((_a = this.plugin.settings.showCompletedCount) != null ? _a : true).onChange(async (value) => {
@@ -447,11 +447,11 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
         });
       }
     );
-    new import_obsidian.Setting(el).setName("Show task count subtitle").setDesc("Show '3 tasks' under the list title in the main panel.").addToggle(
+    new import_obsidian.Setting(el).setName("Show reminder count subtitle").setDesc("Show '3 reminders' under the list title in the main panel.").addToggle(
       (t) => {
         var _a;
-        return t.setValue((_a = this.plugin.settings.showTaskCountSubtitle) != null ? _a : true).onChange(async (value) => {
-          this.plugin.settings.showTaskCountSubtitle = value;
+        return t.setValue((_a = this.plugin.settings.showReminderCountSubtitle) != null ? _a : true).onChange(async (value) => {
+          this.plugin.settings.showReminderCountSubtitle = value;
           await this.plugin.saveSettings();
         });
       }
@@ -472,7 +472,7 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
 // src/data/AlertManager.ts
 var import_obsidian2 = require("obsidian");
 var AlertManager = class {
-  constructor(app, taskManager, eventManager, getSettings) {
+  constructor(app, reminderManager, eventManager, getSettings) {
     this.intervalId = null;
     this.firedAlerts = /* @__PURE__ */ new Set();
     this.audioCtx = null;
@@ -480,7 +480,7 @@ var AlertManager = class {
     this.onChanged = null;
     this.onCreate = null;
     this.app = app;
-    this.taskManager = taskManager;
+    this.reminderManager = reminderManager;
     this.eventManager = eventManager;
     this.getSettings = getSettings;
   }
@@ -495,13 +495,13 @@ var AlertManager = class {
     }, 3e3);
     this.onChanged = (file) => {
       const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-      const inTasks = file.path.startsWith(this.taskManager["tasksFolder"]);
-      if (inEvents || inTasks) setTimeout(() => this.check(), 300);
+      const inReminders = file.path.startsWith(this.reminderManager["remindersFolder"]);
+      if (inEvents || inReminders) setTimeout(() => this.check(), 300);
     };
     this.onCreate = (file) => {
       const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-      const inTasks = file.path.startsWith(this.taskManager["tasksFolder"]);
-      if (inEvents || inTasks) setTimeout(() => this.check(), 500);
+      const inReminders = file.path.startsWith(this.reminderManager["remindersFolder"]);
+      if (inEvents || inReminders) setTimeout(() => this.check(), 500);
     };
     this.app.metadataCache.on("changed", this.onChanged);
     this.app.vault.on("create", this.onCreate);
@@ -543,23 +543,23 @@ var AlertManager = class {
         this.fire(alertKey, event.title, this.buildEventBody(event.startTime, event.alert), "event");
       }
     }
-    const tasks = await this.taskManager.getAll();
-    console.log(`[Chronicle] Checking ${tasks.length} tasks`);
-    for (const task of tasks) {
-      if (!task.alert || task.alert === "none") continue;
-      if (!task.dueDate && !task.dueTime) continue;
-      if (task.status === "done" || task.status === "cancelled") continue;
+    const reminders = await this.reminderManager.getAll();
+    console.log(`[Chronicle] Checking ${reminders.length} reminders`);
+    for (const reminder of reminders) {
+      if (!reminder.alert || reminder.alert === "none") continue;
+      if (!reminder.dueDate && !reminder.dueTime) continue;
+      if (reminder.status === "done" || reminder.status === "cancelled") continue;
       const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-      const dateStr = (_b = task.dueDate) != null ? _b : todayStr;
-      const alertKey = `task-${task.id}-${dateStr}-${task.alert}`;
+      const dateStr = (_b = reminder.dueDate) != null ? _b : todayStr;
+      const alertKey = `reminder-${reminder.id}-${dateStr}-${reminder.alert}`;
       if (this.firedAlerts.has(alertKey)) continue;
-      const timeStr = (_c = task.dueTime) != null ? _c : "09:00";
+      const timeStr = (_c = reminder.dueTime) != null ? _c : "09:00";
       const dueMs = (/* @__PURE__ */ new Date(`${dateStr}T${timeStr}`)).getTime();
-      const alertMs = dueMs - this.offsetToMs(task.alert);
-      console.log(`[Chronicle] Task "${task.title}" date="${dateStr}" time="${timeStr}" alert="${task.alert}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs) / 1e3)}s)`);
+      const alertMs = dueMs - this.offsetToMs(reminder.alert);
+      console.log(`[Chronicle] Reminder "${reminder.title}" date="${dateStr}" time="${timeStr}" alert="${reminder.alert}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs) / 1e3)}s)`);
       if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
-        console.log(`[Chronicle] FIRING alert for task "${task.title}"`);
-        this.fire(alertKey, task.title, this.buildTaskBody(task.dueDate, task.dueTime, task.alert), "task");
+        console.log(`[Chronicle] FIRING alert for reminder "${reminder.title}"`);
+        this.fire(alertKey, reminder.title, this.buildReminderBody(reminder.dueDate, reminder.dueTime, reminder.alert), "reminder");
       }
     }
   }
@@ -575,7 +575,7 @@ var AlertManager = class {
       let notifSent = false;
       try {
         const { exec } = window.require("child_process");
-        const t = `Chronicle \u2014 ${type === "event" ? "Event" : "Task"}`;
+        const t = `Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`;
         const b = `${title} \u2014 ${body}`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
         exec(
           `osascript -e 'display notification "${b}" with title "${t}" sound name "Glass"'`,
@@ -592,7 +592,7 @@ var AlertManager = class {
         try {
           const { ipcRenderer } = window.require("electron");
           ipcRenderer.send("show-notification", {
-            title: `Chronicle \u2014 ${type === "event" ? "Event" : "Task"}`,
+            title: `Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`,
             body: `${title}
 ${body}`
           });
@@ -650,7 +650,8 @@ ${body}`, 8e3);
     if (alert === "at-time") return `Starting at ${this.formatTime(startTime)}`;
     return `${this.offsetLabel(alert)} \u2014 starts at ${this.formatTime(startTime)}`;
   }
-  buildTaskBody(dueDate, dueTime, alert) {
+  buildReminderBody(dueDate, dueTime, alert) {
+    if (!dueDate) return dueTime ? `Due at ${this.formatTime(dueTime)}` : "Due now";
     const dateLabel = (/* @__PURE__ */ new Date(dueDate + "T00:00:00")).toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
@@ -687,7 +688,7 @@ ${body}`, 8e3);
 
 // src/types/index.ts
 var DEFAULT_SETTINGS = {
-  tasksFolder: "Chronicle/Tasks",
+  remindersFolder: "Chronicle/Reminders",
   eventsFolder: "Chronicle/Events",
   calendars: [
     { id: "personal", name: "Personal", color: "#378ADD", isVisible: true, createdAt: (/* @__PURE__ */ new Date()).toISOString() },
@@ -699,8 +700,8 @@ var DEFAULT_SETTINGS = {
     { id: "work", name: "Work", color: "#34C759", createdAt: (/* @__PURE__ */ new Date()).toISOString() }
   ],
   defaultListId: "personal",
-  defaultTaskStatus: "todo",
-  defaultTaskPriority: "none",
+  defaultReminderStatus: "todo",
+  defaultReminderPriority: "none",
   defaultAlert: "none",
   startOfWeek: 0,
   timeFormat: "12h",
@@ -712,11 +713,11 @@ var DEFAULT_SETTINGS = {
   notifObsidian: true,
   notifSound: true,
   notifEvents: true,
-  notifTasks: true,
+  notifReminders: true,
   defaultEventDuration: 60,
   density: "comfortable",
   showCompletedCount: true,
-  showTaskCountSubtitle: true,
+  showReminderCountSubtitle: true,
   defaultCustomFields: []
 };
 
@@ -815,12 +816,12 @@ function buildTagField(app, wrapper, initial) {
 // src/views/EventFormView.ts
 var EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
 var EventFormView = class extends import_obsidian3.ItemView {
-  constructor(leaf, eventManager, calendarManager, taskManager, editingEvent, onSave) {
+  constructor(leaf, eventManager, calendarManager, reminderManager, editingEvent, onSave) {
     super(leaf);
     this.editingEvent = null;
     this.eventManager = eventManager;
     this.calendarManager = calendarManager;
-    this.taskManager = taskManager;
+    this.reminderManager = reminderManager;
     this.editingEvent = editingEvent != null ? editingEvent : null;
     this.onSave = onSave;
   }
@@ -847,8 +848,8 @@ var EventFormView = class extends import_obsidian3.ItemView {
     container.addClass("chronicle-form-page");
     const e = this.editingEvent;
     const calendars = this.calendarManager.getAll();
-    const allTasks = await this.taskManager.getAll();
-    let linkedIds = [...(_a = e == null ? void 0 : e.linkedTaskIds) != null ? _a : []];
+    const allReminders = await this.reminderManager.getAll();
+    let linkedIds = [...(_a = e == null ? void 0 : e.linkedReminderIds) != null ? _a : []];
     const header = container.createDiv("cf-header");
     const cancelBtn = header.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
     header.createDiv("cf-header-title").setText(e ? "Edit event" : "New event");
@@ -956,31 +957,31 @@ var EventFormView = class extends import_obsidian3.ItemView {
       placeholder: "Projects/Website, Journal/2024  (comma separated)"
     });
     linkedInput.value = (_k = (_j = e == null ? void 0 : e.linkedNotes) == null ? void 0 : _j.join(", ")) != null ? _k : "";
-    const linkedTasksField = this.field(form, "Linked tasks");
-    const linkedList = linkedTasksField.createDiv("ctl-list");
+    const linkedRemindersField = this.field(form, "Linked reminders");
+    const linkedList = linkedRemindersField.createDiv("ctl-list");
     const renderLinkedList = () => {
       linkedList.empty();
-      const items = allTasks.filter((t) => linkedIds.includes(t.id));
+      const items = allReminders.filter((r) => linkedIds.includes(r.id));
       if (items.length === 0) {
-        linkedList.createDiv("ctl-empty").setText("No linked tasks");
+        linkedList.createDiv("ctl-empty").setText("No linked reminders");
       }
-      for (const task of items) {
+      for (const reminder of items) {
         const row = linkedList.createDiv("ctl-item");
-        row.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        row.createSpan({ cls: "ctl-title" }).setText(task.title);
+        row.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        row.createSpan({ cls: "ctl-title" }).setText(reminder.title);
         const unlinkBtn = row.createEl("button", { cls: "ctl-unlink", text: "\xD7" });
         unlinkBtn.addEventListener("click", () => {
-          linkedIds = linkedIds.filter((id) => id !== task.id);
+          linkedIds = linkedIds.filter((id) => id !== reminder.id);
           renderLinkedList();
         });
       }
     };
     renderLinkedList();
-    const searchWrap = linkedTasksField.createDiv("ctl-search-wrap");
+    const searchWrap = linkedRemindersField.createDiv("ctl-search-wrap");
     const searchInput = searchWrap.createEl("input", {
       type: "text",
       cls: "cf-input ctl-search",
-      placeholder: "Search tasks to link\u2026"
+      placeholder: "Search reminders to link\u2026"
     });
     const searchResults = searchWrap.createDiv("ctl-results");
     searchResults.style.display = "none";
@@ -995,19 +996,19 @@ var EventFormView = class extends import_obsidian3.ItemView {
         closeSearch();
         return;
       }
-      const matches = allTasks.filter((t) => !linkedIds.includes(t.id) && t.title.toLowerCase().includes(q)).slice(0, 6);
+      const matches = allReminders.filter((r) => !linkedIds.includes(r.id) && r.title.toLowerCase().includes(q)).slice(0, 6);
       if (matches.length === 0) {
         closeSearch();
         return;
       }
       searchResults.style.display = "";
-      for (const task of matches) {
+      for (const reminder of matches) {
         const item = searchResults.createDiv("ctl-result-item");
-        item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        item.createSpan({ cls: "ctl-result-title" }).setText(task.title);
+        item.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        item.createSpan({ cls: "ctl-result-title" }).setText(reminder.title);
         item.addEventListener("mousedown", (ev) => {
           ev.preventDefault();
-          linkedIds.push(task.id);
+          linkedIds.push(reminder.id);
           searchInput.value = "";
           closeSearch();
           renderLinkedList();
@@ -1017,17 +1018,17 @@ var EventFormView = class extends import_obsidian3.ItemView {
     searchInput.addEventListener("blur", () => {
       setTimeout(closeSearch, 150);
     });
-    const newTaskWrap = linkedTasksField.createDiv("ctl-new-wrap");
-    const newTaskInput = newTaskWrap.createEl("input", {
+    const newReminderWrap = linkedRemindersField.createDiv("ctl-new-wrap");
+    const newReminderInput = newReminderWrap.createEl("input", {
       type: "text",
       cls: "cf-input ctl-new-input",
-      placeholder: "New task title\u2026"
+      placeholder: "New reminder title\u2026"
     });
-    const addTaskBtn = newTaskWrap.createEl("button", { cls: "cf-btn-primary ctl-add-btn", text: "Add task" });
+    const addReminderBtn = newReminderWrap.createEl("button", { cls: "cf-btn-primary ctl-add-btn", text: "Add reminder" });
     const createAndLink = async () => {
-      const title = newTaskInput.value.trim();
+      const title = newReminderInput.value.trim();
       if (!title) return;
-      const newTask = await this.taskManager.create({
+      const newReminder = await this.reminderManager.create({
         title,
         status: "todo",
         priority: "none",
@@ -1039,13 +1040,13 @@ var EventFormView = class extends import_obsidian3.ItemView {
         customFields: [],
         completedInstances: []
       });
-      allTasks.push(newTask);
-      linkedIds.push(newTask.id);
-      newTaskInput.value = "";
+      allReminders.push(newReminder);
+      linkedIds.push(newReminder.id);
+      newReminderInput.value = "";
       renderLinkedList();
     };
-    addTaskBtn.addEventListener("click", createAndLink);
-    newTaskInput.addEventListener("keydown", (ev) => {
+    addReminderBtn.addEventListener("click", createAndLink);
+    newReminderInput.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter") {
         ev.preventDefault();
         createAndLink();
@@ -1081,7 +1082,7 @@ var EventFormView = class extends import_obsidian3.ItemView {
         notes: notesInput.value || void 0,
         linkedNotes: linkedInput.value ? linkedInput.value.split(",").map((s) => s.trim()).filter(Boolean) : (_a2 = e == null ? void 0 : e.linkedNotes) != null ? _a2 : [],
         tags: tagField.getTags(),
-        linkedTaskIds: linkedIds,
+        linkedReminderIds: linkedIds,
         completedInstances: (_b2 = e == null ? void 0 : e.completedInstances) != null ? _b2 : []
       };
       if (e == null ? void 0 : e.id) {
@@ -1148,63 +1149,63 @@ var ListManager = class {
   }
 };
 
-// src/data/TaskManager.ts
+// src/data/ReminderManager.ts
 var import_obsidian4 = require("obsidian");
-var TaskManager = class {
-  constructor(app, tasksFolder) {
+var ReminderManager = class {
+  constructor(app, remindersFolder) {
     this.app = app;
-    this.tasksFolder = tasksFolder;
+    this.remindersFolder = remindersFolder;
   }
   // ── Read ────────────────────────────────────────────────────────────────────
   async getAll() {
-    const folder = this.app.vault.getFolderByPath(this.tasksFolder);
+    const folder = this.app.vault.getFolderByPath(this.remindersFolder);
     if (!folder) return [];
-    const tasks = [];
+    const reminders = [];
     for (const child of folder.children) {
       if (child instanceof import_obsidian4.TFile && child.extension === "md") {
-        const task = await this.fileToTask(child);
-        if (task) tasks.push(task);
+        const reminder = await this.fileToReminder(child);
+        if (reminder) reminders.push(reminder);
       }
     }
-    return tasks;
+    return reminders;
   }
   async getById(id) {
     var _a;
     const all = await this.getAll();
-    return (_a = all.find((t) => t.id === id)) != null ? _a : null;
+    return (_a = all.find((r) => r.id === id)) != null ? _a : null;
   }
   // ── Write ───────────────────────────────────────────────────────────────────
-  async create(task) {
+  async create(reminder) {
     await this.ensureFolder();
     const full = {
-      ...task,
+      ...reminder,
       id: this.generateId(),
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const path = (0, import_obsidian4.normalizePath)(`${this.tasksFolder}/${full.title}.md`);
-    await this.app.vault.create(path, this.taskToMarkdown(full));
+    const path = (0, import_obsidian4.normalizePath)(`${this.remindersFolder}/${full.title}.md`);
+    await this.app.vault.create(path, this.reminderToMarkdown(full));
     return full;
   }
-  async update(task) {
+  async update(reminder) {
     var _a;
-    const file = this.findFileForTask(task.id);
+    const file = this.findFileForReminder(reminder.id);
     if (!file) return;
-    const expectedPath = (0, import_obsidian4.normalizePath)(`${this.tasksFolder}/${task.title}.md`);
+    const expectedPath = (0, import_obsidian4.normalizePath)(`${this.remindersFolder}/${reminder.title}.md`);
     if (file.path !== expectedPath) {
       await this.app.fileManager.renameFile(file, expectedPath);
     }
     const updatedFile = (_a = this.app.vault.getFileByPath(expectedPath)) != null ? _a : file;
-    await this.app.vault.modify(updatedFile, this.taskToMarkdown(task));
+    await this.app.vault.modify(updatedFile, this.reminderToMarkdown(reminder));
   }
   async delete(id) {
-    const file = this.findFileForTask(id);
+    const file = this.findFileForReminder(id);
     if (file) await this.app.vault.delete(file);
   }
   async markComplete(id) {
-    const task = await this.getById(id);
-    if (!task) return;
+    const reminder = await this.getById(id);
+    if (!reminder) return;
     await this.update({
-      ...task,
+      ...reminder,
       status: "done",
       completedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
@@ -1214,59 +1215,59 @@ var TaskManager = class {
     const today = this.todayStr();
     const all = await this.getAll();
     return all.filter(
-      (t) => t.status !== "done" && t.status !== "cancelled" && t.dueDate === today
+      (r) => r.status !== "done" && r.status !== "cancelled" && r.dueDate === today
     );
   }
   async getOverdue() {
     const today = this.todayStr();
     const all = await this.getAll();
     return all.filter(
-      (t) => t.status !== "done" && t.status !== "cancelled" && !!t.dueDate && t.dueDate < today
+      (r) => r.status !== "done" && r.status !== "cancelled" && !!r.dueDate && r.dueDate < today
     );
   }
   async getScheduled() {
     const all = await this.getAll();
     return all.filter(
-      (t) => t.status !== "done" && t.status !== "cancelled" && !!t.dueDate
+      (r) => r.status !== "done" && r.status !== "cancelled" && !!r.dueDate
     );
   }
   async getFlagged() {
     const all = await this.getAll();
-    return all.filter((t) => t.priority === "high" && t.status !== "done");
+    return all.filter((r) => r.priority === "high" && r.status !== "done");
   }
   // ── Serialisation ───────────────────────────────────────────────────────────
-  taskToMarkdown(task) {
+  reminderToMarkdown(reminder) {
     var _a, _b, _c, _d, _e, _f, _g, _h;
     const fm = {
-      id: task.id,
-      title: task.title,
-      "location": (_a = task.location) != null ? _a : null,
-      status: task.status,
-      priority: task.priority,
-      tags: task.tags,
-      projects: task.projects,
-      "linked-notes": task.linkedNotes,
-      "list-id": (_b = task.listId) != null ? _b : null,
-      "due-date": (_c = task.dueDate) != null ? _c : null,
-      "due-time": (_d = task.dueTime) != null ? _d : null,
-      recurrence: (_e = task.recurrence) != null ? _e : null,
-      "alert": (_f = task.alert) != null ? _f : "none",
-      "time-estimate": (_g = task.timeEstimate) != null ? _g : null,
-      "time-entries": task.timeEntries,
-      "custom-fields": task.customFields,
-      "completed-instances": task.completedInstances,
-      "created-at": task.createdAt,
-      "completed-at": (_h = task.completedAt) != null ? _h : null
+      id: reminder.id,
+      title: reminder.title,
+      "location": (_a = reminder.location) != null ? _a : null,
+      status: reminder.status,
+      priority: reminder.priority,
+      tags: reminder.tags,
+      projects: reminder.projects,
+      "linked-notes": reminder.linkedNotes,
+      "list-id": (_b = reminder.listId) != null ? _b : null,
+      "due-date": (_c = reminder.dueDate) != null ? _c : null,
+      "due-time": (_d = reminder.dueTime) != null ? _d : null,
+      recurrence: (_e = reminder.recurrence) != null ? _e : null,
+      "alert": (_f = reminder.alert) != null ? _f : "none",
+      "time-estimate": (_g = reminder.timeEstimate) != null ? _g : null,
+      "time-entries": reminder.timeEntries,
+      "custom-fields": reminder.customFields,
+      "completed-instances": reminder.completedInstances,
+      "created-at": reminder.createdAt,
+      "completed-at": (_h = reminder.completedAt) != null ? _h : null
     };
     const yaml = Object.entries(fm).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n");
-    const body = task.notes ? `
-${task.notes}` : "";
+    const body = reminder.notes ? `
+${reminder.notes}` : "";
     return `---
 ${yaml}
 ---
 ${body}`;
   }
-  async fileToTask(file) {
+  async fileToReminder(file) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
     try {
       const cache = this.app.metadataCache.getFileCache(file);
@@ -1285,7 +1286,7 @@ ${body}`;
         dueTime: (_f = fm["due-time"]) != null ? _f : void 0,
         recurrence: (_g = fm.recurrence) != null ? _g : void 0,
         alert: (_h = fm.alert) != null ? _h : "none",
-        // read new list-id; fall back to legacy calendar-id so old tasks still show their list
+        // read new list-id; fall back to legacy calendar-id so old reminders still show their list
         listId: (_j = (_i = fm["list-id"]) != null ? _i : fm["calendar-id"]) != null ? _j : void 0,
         tags: (_k = fm.tags) != null ? _k : [],
         linkedNotes: (_l = fm["linked-notes"]) != null ? _l : [],
@@ -1303,9 +1304,9 @@ ${body}`;
     }
   }
   // ── Helpers ─────────────────────────────────────────────────────────────────
-  findFileForTask(id) {
+  findFileForReminder(id) {
     var _a;
-    const folder = this.app.vault.getFolderByPath(this.tasksFolder);
+    const folder = this.app.vault.getFolderByPath(this.remindersFolder);
     if (!folder) return null;
     for (const child of folder.children) {
       if (!(child instanceof import_obsidian4.TFile)) continue;
@@ -1315,12 +1316,12 @@ ${body}`;
     return null;
   }
   async ensureFolder() {
-    if (!this.app.vault.getFolderByPath(this.tasksFolder)) {
-      await this.app.vault.createFolder(this.tasksFolder);
+    if (!this.app.vault.getFolderByPath(this.remindersFolder)) {
+      await this.app.vault.createFolder(this.remindersFolder);
     }
   }
   generateId() {
-    return `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    return `reminder-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
   todayStr() {
     return (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
@@ -1462,7 +1463,7 @@ var EventManager = class {
       alert: event.alert,
       "tags": (_f = event.tags) != null ? _f : [],
       "linked-notes": (_g = event.linkedNotes) != null ? _g : [],
-      "linked-task-ids": event.linkedTaskIds,
+      "linked-reminder-ids": event.linkedReminderIds,
       "completed-instances": event.completedInstances,
       "created-at": event.createdAt
     };
@@ -1475,7 +1476,7 @@ ${yaml}
 ${body}`;
   }
   async fileToEvent(file) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
     try {
       const cache = this.app.metadataCache.getFileCache(file);
       const fm = cache == null ? void 0 : cache.frontmatter;
@@ -1497,9 +1498,9 @@ ${body}`;
         alert: (_h = fm.alert) != null ? _h : "none",
         tags: (_i = fm["tags"]) != null ? _i : [],
         linkedNotes: (_j = fm["linked-notes"]) != null ? _j : [],
-        linkedTaskIds: (_k = fm["linked-task-ids"]) != null ? _k : [],
-        completedInstances: (_l = fm["completed-instances"]) != null ? _l : [],
-        createdAt: (_m = fm["created-at"]) != null ? _m : (/* @__PURE__ */ new Date()).toISOString(),
+        linkedReminderIds: (_l = (_k = fm["linked-reminder-ids"]) != null ? _k : fm["linked-task-ids"]) != null ? _l : [],
+        completedInstances: (_m = fm["completed-instances"]) != null ? _m : [],
+        createdAt: (_n = fm["created-at"]) != null ? _n : (/* @__PURE__ */ new Date()).toISOString(),
         notes
       };
     } catch (e) {
@@ -1527,17 +1528,17 @@ ${body}`;
   }
 };
 
-// src/views/TaskView.ts
+// src/views/ReminderView.ts
 var import_obsidian9 = require("obsidian");
 
-// src/ui/TaskModal.ts
+// src/ui/ReminderModal.ts
 var import_obsidian6 = require("obsidian");
-var TaskModal = class extends import_obsidian6.Modal {
-  constructor(app, taskManager, listManager, editingTask, onSave, onExpand, plugin) {
+var ReminderModal = class extends import_obsidian6.Modal {
+  constructor(app, reminderManager, listManager, editingReminder, onSave, onExpand, plugin) {
     super(app);
-    this.taskManager = taskManager;
+    this.reminderManager = reminderManager;
     this.listManager = listManager;
-    this.editingTask = editingTask != null ? editingTask : null;
+    this.editingReminder = editingReminder != null ? editingReminder : null;
     this.onSave = onSave;
     this.onExpand = onExpand;
     this.plugin = plugin;
@@ -1547,32 +1548,32 @@ var TaskModal = class extends import_obsidian6.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("chronicle-event-modal");
-    const t = this.editingTask;
+    const r = this.editingReminder;
     const lists = this.listManager.getAll();
     const header = contentEl.createDiv("cem-header");
-    header.createDiv("cem-title").setText(t ? "Edit task" : "New task");
+    header.createDiv("cem-title").setText(r ? "Edit reminder" : "New reminder");
     const expandBtn = header.createEl("button", { cls: "cf-btn-ghost cem-expand-btn" });
     expandBtn.title = "Open as full page";
     expandBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
     expandBtn.addEventListener("click", () => {
       var _a2;
       this.close();
-      (_a2 = this.onExpand) == null ? void 0 : _a2.call(this, t != null ? t : void 0);
+      (_a2 = this.onExpand) == null ? void 0 : _a2.call(this, r != null ? r : void 0);
     });
     const form = contentEl.createDiv("cem-form");
     const titleInput = this.field(form, "Title").createEl("input", {
       type: "text",
       cls: "cf-input cf-title-input",
-      placeholder: "Task name"
+      placeholder: "Reminder name"
     });
-    titleInput.value = (_a = t == null ? void 0 : t.title) != null ? _a : "";
+    titleInput.value = (_a = r == null ? void 0 : r.title) != null ? _a : "";
     titleInput.focus();
     const locationInput = this.field(form, "Location").createEl("input", {
       type: "text",
       cls: "cf-input",
       placeholder: "Add location"
     });
-    locationInput.value = (_b = t == null ? void 0 : t.location) != null ? _b : "";
+    locationInput.value = (_b = r == null ? void 0 : r.location) != null ? _b : "";
     const row1 = form.createDiv("cf-row");
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
     const statuses = [
@@ -1581,10 +1582,10 @@ var TaskModal = class extends import_obsidian6.Modal {
       { value: "done", label: "Done" },
       { value: "cancelled", label: "Cancelled" }
     ];
-    const defaultStatus = (_e = (_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null ? void 0 : _d.defaultTaskStatus) != null ? _e : "todo";
+    const defaultStatus = (_e = (_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null ? void 0 : _d.defaultReminderStatus) != null ? _e : "todo";
     for (const s of statuses) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
-      if (t ? t.status === s.value : s.value === defaultStatus) opt.selected = true;
+      if (r ? r.status === s.value : s.value === defaultStatus) opt.selected = true;
     }
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
     const priorities = [
@@ -1593,16 +1594,16 @@ var TaskModal = class extends import_obsidian6.Modal {
       { value: "medium", label: "Medium" },
       { value: "high", label: "High" }
     ];
-    const defaultPriority = (_h = (_g = (_f = this.plugin) == null ? void 0 : _f.settings) == null ? void 0 : _g.defaultTaskPriority) != null ? _h : "none";
+    const defaultPriority = (_h = (_g = (_f = this.plugin) == null ? void 0 : _f.settings) == null ? void 0 : _g.defaultReminderPriority) != null ? _h : "none";
     for (const p of priorities) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
-      if (t ? t.priority === p.value : p.value === defaultPriority) opt.selected = true;
+      if (r ? r.priority === p.value : p.value === defaultPriority) opt.selected = true;
     }
     const row2 = form.createDiv("cf-row");
     const dueDateInput = this.field(row2, "Date").createEl("input", { type: "date", cls: "cf-input" });
-    dueDateInput.value = (_i = t == null ? void 0 : t.dueDate) != null ? _i : "";
+    dueDateInput.value = (_i = r == null ? void 0 : r.dueDate) != null ? _i : "";
     const dueTimeInput = this.field(row2, "Time").createEl("input", { type: "time", cls: "cf-input" });
-    dueTimeInput.value = (_j = t == null ? void 0 : t.dueTime) != null ? _j : "";
+    dueTimeInput.value = (_j = r == null ? void 0 : r.dueTime) != null ? _j : "";
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
     const recurrences = [
       { value: "", label: "Never" },
@@ -1612,14 +1613,14 @@ var TaskModal = class extends import_obsidian6.Modal {
       { value: "FREQ=YEARLY", label: "Every year" },
       { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Weekdays" }
     ];
-    for (const r of recurrences) {
-      const opt = recSelect.createEl("option", { value: r.value, text: r.label });
-      if ((t == null ? void 0 : t.recurrence) === r.value) opt.selected = true;
+    for (const rec of recurrences) {
+      const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
+      if ((r == null ? void 0 : r.recurrence) === rec.value) opt.selected = true;
     }
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const taskAlerts = [
+    const reminderAlerts = [
       { value: "none", label: "None" },
-      { value: "at-time", label: "At time of task" },
+      { value: "at-time", label: "At time of reminder" },
       { value: "5min", label: "5 minutes before" },
       { value: "10min", label: "10 minutes before" },
       { value: "15min", label: "15 minutes before" },
@@ -1631,16 +1632,16 @@ var TaskModal = class extends import_obsidian6.Modal {
       { value: "1week", label: "1 week before" }
     ];
     const defaultAlert = (_m = (_l = (_k = this.plugin) == null ? void 0 : _k.settings) == null ? void 0 : _l.defaultAlert) != null ? _m : "none";
-    for (const a of taskAlerts) {
+    for (const a of reminderAlerts) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
-      if (t ? t.alert === a.value : a.value === defaultAlert) opt.selected = true;
+      if (r ? r.alert === a.value : a.value === defaultAlert) opt.selected = true;
     }
     const listSelect = this.field(form, "List").createEl("select", { cls: "cf-select" });
     const defaultListId = (_p = (_o = (_n = this.plugin) == null ? void 0 : _n.settings) == null ? void 0 : _o.defaultListId) != null ? _p : "";
     listSelect.createEl("option", { value: "", text: "None" });
     for (const list of lists) {
       const opt = listSelect.createEl("option", { value: list.id, text: list.name });
-      if (t ? t.listId === list.id : list.id === defaultListId) opt.selected = true;
+      if (r ? r.listId === list.id : list.id === defaultListId) opt.selected = true;
     }
     const updateListColor = () => {
       const list = this.listManager.getById(listSelect.value);
@@ -1650,21 +1651,21 @@ var TaskModal = class extends import_obsidian6.Modal {
     };
     listSelect.addEventListener("change", updateListColor);
     updateListColor();
-    const tagField = buildTagField(this.app, this.field(form, "Tags"), (_q = t == null ? void 0 : t.tags) != null ? _q : []);
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), (_q = r == null ? void 0 : r.tags) != null ? _q : []);
     const footer = contentEl.createDiv("cem-footer");
     const cancelBtn = footer.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
-    if (t && t.id) {
-      const deleteBtn = footer.createEl("button", { cls: "cf-btn-delete", text: "Delete task" });
+    if (r && r.id) {
+      const deleteBtn = footer.createEl("button", { cls: "cf-btn-delete", text: "Delete reminder" });
       deleteBtn.addEventListener("click", async () => {
         var _a2;
-        await this.taskManager.delete(t.id);
+        await this.reminderManager.delete(r.id);
         (_a2 = this.onSave) == null ? void 0 : _a2.call(this);
         this.close();
       });
     }
     const saveBtn = footer.createEl("button", {
       cls: "cf-btn-primary",
-      text: (t == null ? void 0 : t.id) ? "Save" : "Add task"
+      text: (r == null ? void 0 : r.id) ? "Save" : "Add reminder"
     });
     cancelBtn.addEventListener("click", () => this.close());
     const handleSave = async () => {
@@ -1675,17 +1676,17 @@ var TaskModal = class extends import_obsidian6.Modal {
         titleInput.classList.add("cf-error");
         return;
       }
-      if (!(t == null ? void 0 : t.id)) {
-        const existing = await this.taskManager.getAll();
+      if (!(r == null ? void 0 : r.id)) {
+        const existing = await this.reminderManager.getAll();
         const duplicate = existing.find((e) => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new import_obsidian6.Notice(`A task named "${title}" already exists.`, 4e3);
+          new import_obsidian6.Notice(`A reminder named "${title}" already exists.`, 4e3);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
         }
       }
-      const taskData = {
+      const reminderData = {
         title,
         status: statusSelect.value,
         priority: prioritySelect.value,
@@ -1696,18 +1697,18 @@ var TaskModal = class extends import_obsidian6.Modal {
         alert: alertSelect.value,
         location: locationInput.value || void 0,
         tags: tagField.getTags(),
-        notes: t == null ? void 0 : t.notes,
-        linkedNotes: (_a2 = t == null ? void 0 : t.linkedNotes) != null ? _a2 : [],
-        projects: (_b2 = t == null ? void 0 : t.projects) != null ? _b2 : [],
-        timeEstimate: t == null ? void 0 : t.timeEstimate,
-        timeEntries: (_c2 = t == null ? void 0 : t.timeEntries) != null ? _c2 : [],
-        customFields: (_d2 = t == null ? void 0 : t.customFields) != null ? _d2 : [],
-        completedInstances: (_e2 = t == null ? void 0 : t.completedInstances) != null ? _e2 : []
+        notes: r == null ? void 0 : r.notes,
+        linkedNotes: (_a2 = r == null ? void 0 : r.linkedNotes) != null ? _a2 : [],
+        projects: (_b2 = r == null ? void 0 : r.projects) != null ? _b2 : [],
+        timeEstimate: r == null ? void 0 : r.timeEstimate,
+        timeEntries: (_c2 = r == null ? void 0 : r.timeEntries) != null ? _c2 : [],
+        customFields: (_d2 = r == null ? void 0 : r.customFields) != null ? _d2 : [],
+        completedInstances: (_e2 = r == null ? void 0 : r.completedInstances) != null ? _e2 : []
       };
-      if (t == null ? void 0 : t.id) {
-        await this.taskManager.update({ ...t, ...taskData });
+      if (r == null ? void 0 : r.id) {
+        await this.reminderManager.update({ ...r, ...reminderData });
       } else {
-        await this.taskManager.create(taskData);
+        await this.reminderManager.create(reminderData);
       }
       (_f2 = this.onSave) == null ? void 0 : _f2.call(this);
       this.close();
@@ -1728,12 +1729,12 @@ var TaskModal = class extends import_obsidian6.Modal {
   }
 };
 
-// src/ui/TaskDetailPopup.ts
+// src/ui/ReminderDetailPopup.ts
 var import_obsidian7 = require("obsidian");
-var TaskDetailPopup = class extends import_obsidian7.Modal {
-  constructor(app, task, listManager, timeFormat, onEdit) {
+var ReminderDetailPopup = class extends import_obsidian7.Modal {
+  constructor(app, reminder, listManager, timeFormat, onEdit) {
     super(app);
-    this.task = task;
+    this.reminder = reminder;
     this.listManager = listManager;
     this.timeFormat = timeFormat;
     this.onEdit = onEdit;
@@ -1742,39 +1743,39 @@ var TaskDetailPopup = class extends import_obsidian7.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("cdp-modal");
-    const t = this.task;
+    const r = this.reminder;
     const header = contentEl.createDiv("cdp-header");
-    header.createDiv("cdp-title").setText(t.title);
+    header.createDiv("cdp-title").setText(r.title);
     const badgeRow = contentEl.createDiv("cdp-badge-row");
-    badgeRow.createSpan({ cls: `cdp-badge cdp-status-${t.status}` }).setText(formatStatus(t.status));
-    if (t.priority !== "none") {
-      badgeRow.createSpan({ cls: `cdp-badge cdp-priority-${t.priority}` }).setText(formatPriority(t.priority));
+    badgeRow.createSpan({ cls: `cdp-badge cdp-status-${r.status}` }).setText(formatStatus(r.status));
+    if (r.priority !== "none") {
+      badgeRow.createSpan({ cls: `cdp-badge cdp-priority-${r.priority}` }).setText(formatPriority(r.priority));
     }
     const body = contentEl.createDiv("cdp-body");
-    if (t.dueDate) {
-      const timeStr = t.dueTime ? `  \xB7  ${this.fmtTime(t.dueTime)}` : "";
-      this.row(body, "Due", formatDate(t.dueDate) + timeStr);
+    if (r.dueDate) {
+      const timeStr = r.dueTime ? `  \xB7  ${this.fmtTime(r.dueTime)}` : "";
+      this.row(body, "Due", formatDate(r.dueDate) + timeStr);
     }
-    if (t.location) this.row(body, "Location", t.location);
-    if (t.listId) {
-      const list = this.listManager.getById(t.listId);
+    if (r.location) this.row(body, "Location", r.location);
+    if (r.listId) {
+      const list = this.listManager.getById(r.listId);
       if (list) this.listRow(body, list.name, list.color);
     }
-    if (t.recurrence) this.row(body, "Repeat", formatRecurrence(t.recurrence));
-    if (t.alert && t.alert !== "none") this.row(body, "Alert", formatAlert(t.alert));
-    if (t.tags.length > 0) this.row(body, "Tags", t.tags.join(", "));
-    if (t.projects.length > 0) this.row(body, "Projects", t.projects.join(", "));
-    if (t.linkedNotes.length > 0) this.row(body, "Linked notes", t.linkedNotes.join(", "));
-    if (t.timeEstimate) this.row(body, "Estimate", formatDuration(t.timeEstimate));
-    if (t.notes) {
+    if (r.recurrence) this.row(body, "Repeat", formatRecurrence(r.recurrence));
+    if (r.alert && r.alert !== "none") this.row(body, "Alert", formatAlert(r.alert));
+    if (r.tags.length > 0) this.row(body, "Tags", r.tags.join(", "));
+    if (r.projects.length > 0) this.row(body, "Projects", r.projects.join(", "));
+    if (r.linkedNotes.length > 0) this.row(body, "Linked notes", r.linkedNotes.join(", "));
+    if (r.timeEstimate) this.row(body, "Estimate", formatDuration(r.timeEstimate));
+    if (r.notes) {
       const notesRow = body.createDiv("cdp-row cdp-notes-row");
       notesRow.createDiv("cdp-row-label").setText("Notes");
       notesRow.createDiv("cdp-row-value cdp-notes-text").setText(
-        t.notes.length > 400 ? t.notes.slice(0, 400) + "\u2026" : t.notes
+        r.notes.length > 400 ? r.notes.slice(0, 400) + "\u2026" : r.notes
       );
     }
     const footer = contentEl.createDiv("cdp-footer");
-    footer.createEl("button", { cls: "cf-btn-primary", text: "Edit task" }).addEventListener("click", () => {
+    footer.createEl("button", { cls: "cf-btn-primary", text: "Edit reminder" }).addEventListener("click", () => {
       this.close();
       this.onEdit();
     });
@@ -1834,7 +1835,7 @@ function formatRecurrence(rrule) {
 function formatAlert(alert) {
   var _a;
   const map = {
-    "at-time": "At time of event",
+    "at-time": "At time of reminder",
     "5min": "5 minutes before",
     "10min": "10 minutes before",
     "15min": "15 minutes before",
@@ -1854,23 +1855,23 @@ function formatDuration(minutes) {
   return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
 }
 
-// src/views/TaskFormView.ts
+// src/views/ReminderFormView.ts
 var import_obsidian8 = require("obsidian");
-var TASK_FORM_VIEW_TYPE = "chronicle-task-form";
-var TaskFormView = class extends import_obsidian8.ItemView {
-  constructor(leaf, taskManager, listManager, editingTask, onSave) {
+var REMINDER_FORM_VIEW_TYPE = "chronicle-reminder-form";
+var ReminderFormView = class extends import_obsidian8.ItemView {
+  constructor(leaf, reminderManager, listManager, editingReminder, onSave) {
     super(leaf);
-    this.editingTask = null;
-    this.taskManager = taskManager;
+    this.editingReminder = null;
+    this.reminderManager = reminderManager;
     this.listManager = listManager;
-    this.editingTask = editingTask != null ? editingTask : null;
+    this.editingReminder = editingReminder != null ? editingReminder : null;
     this.onSave = onSave;
   }
   getViewType() {
-    return TASK_FORM_VIEW_TYPE;
+    return REMINDER_FORM_VIEW_TYPE;
   }
   getDisplayText() {
-    return this.editingTask ? "Edit task" : "New task";
+    return this.editingReminder ? "Edit reminder" : "New reminder";
   }
   getIcon() {
     return "check-circle";
@@ -1878,8 +1879,8 @@ var TaskFormView = class extends import_obsidian8.ItemView {
   async onOpen() {
     this.render();
   }
-  loadTask(task) {
-    this.editingTask = task;
+  loadReminder(reminder) {
+    this.editingReminder = reminder;
     this.render();
   }
   render() {
@@ -1887,26 +1888,26 @@ var TaskFormView = class extends import_obsidian8.ItemView {
     const container = this.containerEl.children[1];
     container.empty();
     container.addClass("chronicle-form-page");
-    const t = this.editingTask;
+    const r = this.editingReminder;
     const lists = this.listManager.getAll();
     const header = container.createDiv("cf-header");
     const cancelBtn = header.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
-    header.createDiv("cf-header-title").setText(t ? "Edit task" : "New task");
-    const saveBtn = header.createEl("button", { cls: "cf-btn-primary", text: t ? "Save" : "Add" });
+    header.createDiv("cf-header-title").setText(r ? "Edit reminder" : "New reminder");
+    const saveBtn = header.createEl("button", { cls: "cf-btn-primary", text: r ? "Save" : "Add" });
     const form = container.createDiv("cf-form");
     const titleInput = this.field(form, "Title").createEl("input", {
       type: "text",
       cls: "cf-input cf-title-input",
-      placeholder: "Task name"
+      placeholder: "Reminder name"
     });
-    titleInput.value = (_a = t == null ? void 0 : t.title) != null ? _a : "";
+    titleInput.value = (_a = r == null ? void 0 : r.title) != null ? _a : "";
     titleInput.focus();
     const locationInput = this.field(form, "Location").createEl("input", {
       type: "text",
       cls: "cf-input",
       placeholder: "Add location"
     });
-    locationInput.value = (_b = t == null ? void 0 : t.location) != null ? _b : "";
+    locationInput.value = (_b = r == null ? void 0 : r.location) != null ? _b : "";
     const row1 = form.createDiv("cf-row");
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
     const statuses = [
@@ -1917,7 +1918,7 @@ var TaskFormView = class extends import_obsidian8.ItemView {
     ];
     for (const s of statuses) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
-      if ((t == null ? void 0 : t.status) === s.value) opt.selected = true;
+      if ((r == null ? void 0 : r.status) === s.value) opt.selected = true;
     }
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
     const priorities = [
@@ -1928,13 +1929,13 @@ var TaskFormView = class extends import_obsidian8.ItemView {
     ];
     for (const p of priorities) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
-      if ((t == null ? void 0 : t.priority) === p.value) opt.selected = true;
+      if ((r == null ? void 0 : r.priority) === p.value) opt.selected = true;
     }
     const row2 = form.createDiv("cf-row");
     const dueDateInput = this.field(row2, "Date").createEl("input", { type: "date", cls: "cf-input" });
-    dueDateInput.value = (_c = t == null ? void 0 : t.dueDate) != null ? _c : "";
+    dueDateInput.value = (_c = r == null ? void 0 : r.dueDate) != null ? _c : "";
     const dueTimeInput = this.field(row2, "Time").createEl("input", { type: "time", cls: "cf-input" });
-    dueTimeInput.value = (_d = t == null ? void 0 : t.dueTime) != null ? _d : "";
+    dueTimeInput.value = (_d = r == null ? void 0 : r.dueTime) != null ? _d : "";
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
     const recurrences = [
       { value: "", label: "Never" },
@@ -1944,14 +1945,14 @@ var TaskFormView = class extends import_obsidian8.ItemView {
       { value: "FREQ=YEARLY", label: "Every year" },
       { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Weekdays" }
     ];
-    for (const r of recurrences) {
-      const opt = recSelect.createEl("option", { value: r.value, text: r.label });
-      if ((t == null ? void 0 : t.recurrence) === r.value) opt.selected = true;
+    for (const rec of recurrences) {
+      const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
+      if ((r == null ? void 0 : r.recurrence) === rec.value) opt.selected = true;
     }
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
     const formAlerts = [
       { value: "none", label: "None" },
-      { value: "at-time", label: "At time of task" },
+      { value: "at-time", label: "At time of reminder" },
       { value: "5min", label: "5 minutes before" },
       { value: "10min", label: "10 minutes before" },
       { value: "15min", label: "15 minutes before" },
@@ -1964,13 +1965,13 @@ var TaskFormView = class extends import_obsidian8.ItemView {
     ];
     for (const a of formAlerts) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
-      if ((t == null ? void 0 : t.alert) === a.value) opt.selected = true;
+      if ((r == null ? void 0 : r.alert) === a.value) opt.selected = true;
     }
     const listSelect = this.field(form, "List").createEl("select", { cls: "cf-select" });
     listSelect.createEl("option", { value: "", text: "None" });
     for (const list of lists) {
       const opt = listSelect.createEl("option", { value: list.id, text: list.name });
-      if ((t == null ? void 0 : t.listId) === list.id) opt.selected = true;
+      if ((r == null ? void 0 : r.listId) === list.id) opt.selected = true;
     }
     const updateListColor = () => {
       const list = this.listManager.getById(listSelect.value);
@@ -1980,20 +1981,20 @@ var TaskFormView = class extends import_obsidian8.ItemView {
     };
     listSelect.addEventListener("change", updateListColor);
     updateListColor();
-    const tagField = buildTagField(this.app, this.field(form, "Tags"), (_e = t == null ? void 0 : t.tags) != null ? _e : []);
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), (_e = r == null ? void 0 : r.tags) != null ? _e : []);
     const linkedInput = this.field(form, "Linked notes").createEl("input", {
       type: "text",
       cls: "cf-input",
       placeholder: "Projects/Website, Journal/2024  (comma separated)"
     });
-    linkedInput.value = (_f = t == null ? void 0 : t.linkedNotes.join(", ")) != null ? _f : "";
+    linkedInput.value = (_f = r == null ? void 0 : r.linkedNotes.join(", ")) != null ? _f : "";
     const notesInput = this.field(form, "Notes").createEl("textarea", {
       cls: "cf-textarea",
       placeholder: "Add notes..."
     });
-    notesInput.value = (_g = t == null ? void 0 : t.notes) != null ? _g : "";
+    notesInput.value = (_g = r == null ? void 0 : r.notes) != null ? _g : "";
     cancelBtn.addEventListener("click", () => {
-      this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
+      this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     });
     const handleSave = async () => {
       var _a2, _b2, _c2, _d2, _e2;
@@ -2003,17 +2004,17 @@ var TaskFormView = class extends import_obsidian8.ItemView {
         titleInput.classList.add("cf-error");
         return;
       }
-      if (!this.editingTask) {
-        const existing = await this.taskManager.getAll();
+      if (!this.editingReminder) {
+        const existing = await this.reminderManager.getAll();
         const duplicate = existing.find((e) => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new import_obsidian8.Notice(`A task named "${title}" already exists.`, 4e3);
+          new import_obsidian8.Notice(`A reminder named "${title}" already exists.`, 4e3);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
         }
       }
-      const taskData = {
+      const reminderData = {
         title,
         location: locationInput.value || void 0,
         status: statusSelect.value,
@@ -2025,19 +2026,19 @@ var TaskFormView = class extends import_obsidian8.ItemView {
         alert: alertSelect.value,
         tags: tagField.getTags(),
         linkedNotes: linkedInput.value ? linkedInput.value.split(",").map((s) => s.trim()).filter(Boolean) : [],
-        projects: (_a2 = t == null ? void 0 : t.projects) != null ? _a2 : [],
-        timeEntries: (_b2 = t == null ? void 0 : t.timeEntries) != null ? _b2 : [],
-        completedInstances: (_c2 = t == null ? void 0 : t.completedInstances) != null ? _c2 : [],
-        customFields: (_d2 = t == null ? void 0 : t.customFields) != null ? _d2 : [],
+        projects: (_a2 = r == null ? void 0 : r.projects) != null ? _a2 : [],
+        timeEntries: (_b2 = r == null ? void 0 : r.timeEntries) != null ? _b2 : [],
+        completedInstances: (_c2 = r == null ? void 0 : r.completedInstances) != null ? _c2 : [],
+        customFields: (_d2 = r == null ? void 0 : r.customFields) != null ? _d2 : [],
         notes: notesInput.value || void 0
       };
-      if (t) {
-        await this.taskManager.update({ ...t, ...taskData });
+      if (r) {
+        await this.reminderManager.update({ ...r, ...reminderData });
       } else {
-        await this.taskManager.create(taskData);
+        await this.reminderManager.create(reminderData);
       }
       (_e2 = this.onSave) == null ? void 0 : _e2.call(this);
-      this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
+      this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     };
     saveBtn.addEventListener("click", handleSave);
     titleInput.addEventListener("keydown", (e) => {
@@ -2051,19 +2052,19 @@ var TaskFormView = class extends import_obsidian8.ItemView {
   }
 };
 
-// src/views/TaskView.ts
-var TASK_VIEW_TYPE = "chronicle-task-view";
-var TaskView = class extends import_obsidian9.ItemView {
-  constructor(leaf, taskManager, listManager, plugin) {
+// src/views/ReminderView.ts
+var REMINDER_VIEW_TYPE = "chronicle-reminder-view";
+var ReminderView = class extends import_obsidian9.ItemView {
+  constructor(leaf, reminderManager, listManager, plugin) {
     super(leaf);
     this.currentListId = "today";
     this._renderVersion = 0;
-    this.taskManager = taskManager;
+    this.reminderManager = reminderManager;
     this.listManager = listManager;
     this.plugin = plugin;
   }
   getViewType() {
-    return TASK_VIEW_TYPE;
+    return REMINDER_VIEW_TYPE;
   }
   getDisplayText() {
     return "Reminders";
@@ -2075,7 +2076,7 @@ var TaskView = class extends import_obsidian9.ItemView {
     await this.render();
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
-        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
           this.render();
         }
       })
@@ -2085,14 +2086,14 @@ var TaskView = class extends import_obsidian9.ItemView {
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
           setTimeout(() => this.render(), 200);
         }
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
-        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
           this.render();
         }
       })
@@ -2103,26 +2104,26 @@ var TaskView = class extends import_obsidian9.ItemView {
     const container = this.containerEl.children[1];
     container.empty();
     container.addClass("chronicle-app");
-    const all = await this.taskManager.getAll();
-    const today = await this.taskManager.getDueToday();
-    const scheduled = await this.taskManager.getScheduled();
-    const flagged = await this.taskManager.getFlagged();
-    const overdue = await this.taskManager.getOverdue();
+    const all = await this.reminderManager.getAll();
+    const today = await this.reminderManager.getDueToday();
+    const scheduled = await this.reminderManager.getScheduled();
+    const flagged = await this.reminderManager.getFlagged();
+    const overdue = await this.reminderManager.getOverdue();
     const lists = this.listManager.getAll();
     if (this._renderVersion !== version) return;
     const layout = container.createDiv("chronicle-layout");
     const sidebar = layout.createDiv("chronicle-sidebar");
     const main = layout.createDiv("chronicle-main");
-    const newTaskBtn = sidebar.createEl("button", {
-      cls: "chronicle-new-task-btn",
-      text: "New task"
+    const newReminderBtn = sidebar.createEl("button", {
+      cls: "chronicle-new-reminder-btn",
+      text: "New Reminder"
     });
-    newTaskBtn.addEventListener("click", () => this.openTaskForm());
+    newReminderBtn.addEventListener("click", () => this.openReminderForm());
     const tilesGrid = sidebar.createDiv("chronicle-tiles");
     const tiles = [
       { id: "today", label: "Today", count: today.length + overdue.length, color: "#FF3B30", badge: overdue.length },
       { id: "scheduled", label: "Scheduled", count: scheduled.length, color: "#378ADD", badge: 0 },
-      { id: "all", label: "All", count: all.filter((t) => t.status !== "done").length, color: "#636366", badge: 0 },
+      { id: "all", label: "All", count: all.filter((r) => r.status !== "done").length, color: "#636366", badge: 0 },
       { id: "flagged", label: "Flagged", count: flagged.length, color: "#FF9500", badge: 0 }
     ];
     for (const tile of tiles) {
@@ -2147,7 +2148,7 @@ var TaskView = class extends import_obsidian9.ItemView {
     const completedIcon = completedRow.createDiv("chronicle-completed-icon");
     completedIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
     completedRow.createDiv("chronicle-list-name").setText("Completed");
-    const completedCount = all.filter((t) => t.status === "done").length;
+    const completedCount = all.filter((r) => r.status === "done").length;
     if (completedCount > 0) completedRow.createDiv("chronicle-list-count").setText(String(completedCount));
     completedRow.addEventListener("click", () => {
       this.currentListId = "completed";
@@ -2161,7 +2162,7 @@ var TaskView = class extends import_obsidian9.ItemView {
       const dot = row.createDiv("chronicle-list-dot");
       dot.style.backgroundColor = list.color;
       row.createDiv("chronicle-list-name").setText(list.name);
-      const listCount = all.filter((t) => t.listId === list.id && t.status !== "done").length;
+      const listCount = all.filter((r) => r.listId === list.id && r.status !== "done").length;
       if (listCount > 0) row.createDiv("chronicle-list-count").setText(String(listCount));
       row.addEventListener("click", () => {
         this.currentListId = list.id;
@@ -2174,7 +2175,7 @@ var TaskView = class extends import_obsidian9.ItemView {
     var _a, _b;
     const header = main.createDiv("chronicle-main-header");
     const titleEl = header.createDiv("chronicle-main-title");
-    let tasks = [];
+    let reminders = [];
     const smartColors = {
       today: "#FF3B30",
       scheduled: "#378ADD",
@@ -2194,31 +2195,31 @@ var TaskView = class extends import_obsidian9.ItemView {
       titleEl.style.color = smartColors[this.currentListId];
       switch (this.currentListId) {
         case "today":
-          tasks = [...overdue, ...await this.taskManager.getDueToday()];
+          reminders = [...overdue, ...await this.reminderManager.getDueToday()];
           break;
         case "scheduled":
-          tasks = await this.taskManager.getScheduled();
+          reminders = await this.reminderManager.getScheduled();
           break;
         case "flagged":
-          tasks = await this.taskManager.getFlagged();
+          reminders = await this.reminderManager.getFlagged();
           break;
         case "all":
-          tasks = all.filter((t) => t.status !== "done");
+          reminders = all.filter((r) => r.status !== "done");
           break;
         case "completed":
-          tasks = all.filter((t) => t.status === "done");
+          reminders = all.filter((r) => r.status === "done");
           break;
       }
     } else {
       const list = this.listManager.getById(this.currentListId);
       titleEl.setText((_a = list == null ? void 0 : list.name) != null ? _a : "List");
       titleEl.style.color = list ? list.color : "var(--text-normal)";
-      tasks = all.filter((t) => t.listId === this.currentListId && t.status !== "done");
+      reminders = all.filter((r) => r.listId === this.currentListId && r.status !== "done");
     }
     const isCompleted = this.currentListId === "completed";
-    const countTasks = isCompleted ? tasks : tasks.filter((t) => t.status !== "done");
-    const showSubtitle = (_b = this.plugin.settings.showTaskCountSubtitle) != null ? _b : true;
-    if (countTasks.length > 0 && showSubtitle) {
+    const activeCount = isCompleted ? reminders : reminders.filter((r) => r.status !== "done");
+    const showSubtitle = (_b = this.plugin.settings.showReminderCountSubtitle) != null ? _b : true;
+    if (activeCount.length > 0 && showSubtitle) {
       const subtitle = header.createDiv("chronicle-main-subtitle");
       if (isCompleted) {
         const clearBtn = subtitle.createEl("button", {
@@ -2226,29 +2227,29 @@ var TaskView = class extends import_obsidian9.ItemView {
           text: "Clear all"
         });
         clearBtn.addEventListener("click", async () => {
-          const all2 = await this.taskManager.getAll();
-          for (const t of all2.filter((t2) => t2.status === "done")) {
-            await this.taskManager.delete(t.id);
+          const all2 = await this.reminderManager.getAll();
+          for (const r of all2.filter((r2) => r2.status === "done")) {
+            await this.reminderManager.delete(r.id);
           }
           await this.render();
         });
       } else {
         subtitle.setText(
-          `${countTasks.length} ${countTasks.length === 1 ? "task" : "tasks"}`
+          `${activeCount.length} ${activeCount.length === 1 ? "reminder" : "reminders"}`
         );
       }
     }
-    const listEl = main.createDiv("chronicle-task-list");
-    if (tasks.length === 0) {
+    const listEl = main.createDiv("chronicle-reminder-list");
+    if (reminders.length === 0) {
       this.renderEmptyState(listEl);
     } else {
-      const groups = this.groupTasks(tasks);
-      for (const [group, groupTasks] of Object.entries(groups)) {
-        if (groupTasks.length === 0) continue;
+      const groups = this.groupReminders(reminders);
+      for (const [group, groupReminders] of Object.entries(groups)) {
+        if (groupReminders.length === 0) continue;
         listEl.createDiv("chronicle-group-label").setText(group);
-        const card = listEl.createDiv("chronicle-task-card-group");
-        for (const task of groupTasks) {
-          this.renderTaskRow(card, task);
+        const card = listEl.createDiv("chronicle-reminder-card-group");
+        for (const reminder of groupReminders) {
+          this.renderReminderRow(card, reminder);
         }
       }
     }
@@ -2260,9 +2261,9 @@ var TaskView = class extends import_obsidian9.ItemView {
     empty.createDiv("chronicle-empty-title").setText("All done");
     empty.createDiv("chronicle-empty-subtitle").setText("Nothing left in this list.");
   }
-  renderTaskRow(container, task) {
-    const row = container.createDiv("chronicle-task-row");
-    const isDone = task.status === "done";
+  renderReminderRow(container, reminder) {
+    const row = container.createDiv("chronicle-reminder-row");
+    const isDone = reminder.status === "done";
     const isArchive = this.currentListId === "completed";
     const checkboxWrap = row.createDiv("chronicle-checkbox-wrap");
     const checkbox = checkboxWrap.createDiv("chronicle-checkbox");
@@ -2272,53 +2273,53 @@ var TaskView = class extends import_obsidian9.ItemView {
       e.stopPropagation();
       checkbox.addClass("completing");
       setTimeout(async () => {
-        await this.taskManager.update({
-          ...task,
+        await this.reminderManager.update({
+          ...reminder,
           status: isDone ? "todo" : "done",
           completedAt: isDone ? void 0 : (/* @__PURE__ */ new Date()).toISOString()
         });
       }, 300);
     });
-    const content = row.createDiv("chronicle-task-content");
+    const content = row.createDiv("chronicle-reminder-content");
     if (!isArchive) content.addEventListener("click", () => {
-      new TaskDetailPopup(
+      new ReminderDetailPopup(
         this.app,
-        task,
+        reminder,
         this.listManager,
         this.plugin.settings.timeFormat,
-        () => this.openTaskForm(task)
+        () => this.openReminderForm(reminder)
       ).open();
     });
-    const titleEl = content.createDiv("chronicle-task-title");
-    titleEl.setText(task.title);
+    const titleEl = content.createDiv("chronicle-reminder-title");
+    titleEl.setText(reminder.title);
     if (isDone) titleEl.addClass("done");
     const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-    const metaRow = content.createDiv("chronicle-task-meta");
-    if (isArchive && task.completedAt) {
-      const completedDate = new Date(task.completedAt);
-      metaRow.createSpan("chronicle-task-date").setText(
+    const metaRow = content.createDiv("chronicle-reminder-meta");
+    if (isArchive && reminder.completedAt) {
+      const completedDate = new Date(reminder.completedAt);
+      metaRow.createSpan("chronicle-reminder-date").setText(
         "Completed " + completedDate.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric"
         })
       );
-    } else if (task.dueDate || task.listId) {
-      if (task.dueDate) {
-        const metaDate = metaRow.createSpan("chronicle-task-date");
-        metaDate.setText(this.formatDate(task.dueDate));
-        if (task.dueDate < todayStr) metaDate.addClass("overdue");
+    } else if (reminder.dueDate || reminder.listId) {
+      if (reminder.dueDate) {
+        const metaDate = metaRow.createSpan("chronicle-reminder-date");
+        metaDate.setText(this.formatDate(reminder.dueDate));
+        if (reminder.dueDate < todayStr) metaDate.addClass("overdue");
       }
-      if (task.listId) {
-        const list = this.listManager.getById(task.listId);
+      if (reminder.listId) {
+        const list = this.listManager.getById(reminder.listId);
         if (list) {
-          const listDot = metaRow.createSpan("chronicle-task-cal-dot");
+          const listDot = metaRow.createSpan("chronicle-reminder-cal-dot");
           listDot.style.backgroundColor = list.color;
-          metaRow.createSpan("chronicle-task-cal-name").setText(list.name);
+          metaRow.createSpan("chronicle-reminder-cal-name").setText(list.name);
         }
       }
     }
-    if (!isArchive && task.priority === "high") {
+    if (!isArchive && reminder.priority === "high") {
       row.createDiv("chronicle-flag").setText("\u2691");
     }
     if (isArchive) {
@@ -2326,12 +2327,12 @@ var TaskView = class extends import_obsidian9.ItemView {
       const restoreBtn = actions.createEl("button", { cls: "chronicle-archive-btn", text: "Restore" });
       restoreBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await this.taskManager.update({ ...task, status: "todo", completedAt: void 0 });
+        await this.reminderManager.update({ ...reminder, status: "todo", completedAt: void 0 });
       });
       const deleteBtn = actions.createEl("button", { cls: "chronicle-archive-btn chronicle-archive-btn-delete", text: "Delete" });
       deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await this.taskManager.delete(task.id);
+        await this.reminderManager.delete(reminder.id);
       });
       return;
     }
@@ -2342,16 +2343,16 @@ var TaskView = class extends import_obsidian9.ItemView {
       menu.style.left = `${e.clientX}px`;
       menu.style.top = `${e.clientY}px`;
       const editItem = menu.createDiv("chronicle-context-item");
-      editItem.setText("Edit task");
+      editItem.setText("Edit reminder");
       editItem.addEventListener("click", () => {
         menu.remove();
-        this.openTaskForm(task);
+        this.openReminderForm(reminder);
       });
       const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
-      deleteItem.setText("Delete task");
+      deleteItem.setText("Delete reminder");
       deleteItem.addEventListener("click", async () => {
         menu.remove();
-        await this.taskManager.delete(task.id);
+        await this.reminderManager.delete(reminder.id);
       });
       const cancelItem = menu.createDiv("chronicle-context-item");
       cancelItem.setText("Cancel");
@@ -2360,18 +2361,18 @@ var TaskView = class extends import_obsidian9.ItemView {
       setTimeout(() => document.addEventListener("click", () => menu.remove(), { once: true }), 0);
     });
   }
-  groupTasks(tasks) {
+  groupReminders(reminders) {
     var _a, _b;
     const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const nextWeek = new Date(Date.now() + 7 * 864e5).toISOString().split("T")[0];
     const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString().split("T")[0];
     if (this.currentListId === "completed") {
       const groups2 = { "Today": [], "This week": [], "Earlier": [] };
-      for (const task of tasks) {
-        const d = (_b = (_a = task.completedAt) == null ? void 0 : _a.split("T")[0]) != null ? _b : "";
-        if (d === today) groups2["Today"].push(task);
-        else if (d >= weekAgo) groups2["This week"].push(task);
-        else groups2["Earlier"].push(task);
+      for (const reminder of reminders) {
+        const d = (_b = (_a = reminder.completedAt) == null ? void 0 : _a.split("T")[0]) != null ? _b : "";
+        if (d === today) groups2["Today"].push(reminder);
+        else if (d >= weekAgo) groups2["This week"].push(reminder);
+        else groups2["Earlier"].push(reminder);
       }
       return groups2;
     }
@@ -2382,25 +2383,25 @@ var TaskView = class extends import_obsidian9.ItemView {
       "Later": [],
       "No date": []
     };
-    for (const task of tasks) {
-      if (task.status === "done") continue;
-      if (!task.dueDate) {
-        groups["No date"].push(task);
+    for (const reminder of reminders) {
+      if (reminder.status === "done") continue;
+      if (!reminder.dueDate) {
+        groups["No date"].push(reminder);
         continue;
       }
-      if (task.dueDate < today) {
-        groups["Overdue"].push(task);
+      if (reminder.dueDate < today) {
+        groups["Overdue"].push(reminder);
         continue;
       }
-      if (task.dueDate === today) {
-        groups["Today"].push(task);
+      if (reminder.dueDate === today) {
+        groups["Today"].push(reminder);
         continue;
       }
-      if (task.dueDate <= nextWeek) {
-        groups["This week"].push(task);
+      if (reminder.dueDate <= nextWeek) {
+        groups["This week"].push(reminder);
         continue;
       }
-      groups["Later"].push(task);
+      groups["Later"].push(reminder);
     }
     return groups;
   }
@@ -2411,28 +2412,28 @@ var TaskView = class extends import_obsidian9.ItemView {
     if (dateStr === tomorrow) return "Tomorrow";
     return (/* @__PURE__ */ new Date(dateStr + "T00:00:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
-  async openTaskForm(task) {
-    new TaskModal(
+  async openReminderForm(reminder) {
+    new ReminderModal(
       this.app,
-      this.taskManager,
+      this.reminderManager,
       this.listManager,
-      task,
+      reminder,
       void 0,
-      (t) => this.openTaskFullPage(t),
+      (r) => this.openReminderFullPage(r),
       this.plugin
     ).open();
   }
-  async openTaskFullPage(task) {
+  async openReminderFullPage(reminder) {
     const { workspace } = this.app;
-    const existing = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
+    const existing = workspace.getLeavesOfType(REMINDER_FORM_VIEW_TYPE)[0];
     if (existing) existing.detach();
     const leaf = workspace.getLeaf("tab");
-    await leaf.setViewState({ type: TASK_FORM_VIEW_TYPE, active: true });
+    await leaf.setViewState({ type: REMINDER_FORM_VIEW_TYPE, active: true });
     workspace.revealLeaf(leaf);
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const formLeaf = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
+    const formLeaf = workspace.getLeavesOfType(REMINDER_FORM_VIEW_TYPE)[0];
     const formView = formLeaf == null ? void 0 : formLeaf.view;
-    if (formView && task) formView.loadTask(task);
+    if (formView && reminder) formView.loadReminder(reminder);
   }
 };
 
@@ -2442,11 +2443,11 @@ var import_obsidian12 = require("obsidian");
 // src/ui/EventModal.ts
 var import_obsidian10 = require("obsidian");
 var EventModal = class extends import_obsidian10.Modal {
-  constructor(app, eventManager, calendarManager, taskManager, editingEvent, onSave, onExpand) {
+  constructor(app, eventManager, calendarManager, reminderManager, editingEvent, onSave, onExpand) {
     super(app);
     this.eventManager = eventManager;
     this.calendarManager = calendarManager;
-    this.taskManager = taskManager;
+    this.reminderManager = reminderManager;
     this.editingEvent = editingEvent != null ? editingEvent : null;
     this.onSave = onSave;
     this.onExpand = onExpand;
@@ -2458,8 +2459,8 @@ var EventModal = class extends import_obsidian10.Modal {
     contentEl.addClass("chronicle-event-modal");
     const e = this.editingEvent;
     const calendars = this.calendarManager.getAll();
-    const allTasks = await this.taskManager.getAll();
-    let linkedIds = [...(_a = e == null ? void 0 : e.linkedTaskIds) != null ? _a : []];
+    const allReminders = await this.reminderManager.getAll();
+    let linkedIds = [...(_a = e == null ? void 0 : e.linkedReminderIds) != null ? _a : []];
     const header = contentEl.createDiv("cem-header");
     header.createDiv("cem-title").setText(e && e.id ? "Edit event" : "New event");
     const expandBtn = header.createEl("button", { cls: "cf-btn-ghost cem-expand-btn" });
@@ -2568,21 +2569,21 @@ var EventModal = class extends import_obsidian10.Modal {
     calSelect.addEventListener("change", updateCalColor);
     updateCalColor();
     const tagField = buildTagField(this.app, this.field(form, "Tags"), (_i = e == null ? void 0 : e.tags) != null ? _i : []);
-    const linkedField = this.field(form, "Linked tasks");
+    const linkedField = this.field(form, "Linked reminders");
     const linkedList = linkedField.createDiv("ctl-list");
     const renderLinkedList = () => {
       linkedList.empty();
-      const items = allTasks.filter((t) => linkedIds.includes(t.id));
+      const items = allReminders.filter((r) => linkedIds.includes(r.id));
       if (items.length === 0) {
-        linkedList.createDiv("ctl-empty").setText("No linked tasks");
+        linkedList.createDiv("ctl-empty").setText("No linked reminders");
       }
-      for (const task of items) {
+      for (const reminder of items) {
         const row = linkedList.createDiv("ctl-item");
-        row.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        row.createSpan({ cls: "ctl-title" }).setText(task.title);
+        row.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        row.createSpan({ cls: "ctl-title" }).setText(reminder.title);
         const unlinkBtn = row.createEl("button", { cls: "ctl-unlink", text: "\xD7" });
         unlinkBtn.addEventListener("click", () => {
-          linkedIds = linkedIds.filter((id) => id !== task.id);
+          linkedIds = linkedIds.filter((id) => id !== reminder.id);
           renderLinkedList();
         });
       }
@@ -2592,7 +2593,7 @@ var EventModal = class extends import_obsidian10.Modal {
     const searchInput = searchWrap.createEl("input", {
       type: "text",
       cls: "cf-input ctl-search",
-      placeholder: "Search tasks to link\u2026"
+      placeholder: "Search reminders to link\u2026"
     });
     const searchResults = searchWrap.createDiv("ctl-results");
     searchResults.style.display = "none";
@@ -2607,19 +2608,19 @@ var EventModal = class extends import_obsidian10.Modal {
         closeSearch();
         return;
       }
-      const matches = allTasks.filter((t) => !linkedIds.includes(t.id) && t.title.toLowerCase().includes(q)).slice(0, 6);
+      const matches = allReminders.filter((r) => !linkedIds.includes(r.id) && r.title.toLowerCase().includes(q)).slice(0, 6);
       if (matches.length === 0) {
         closeSearch();
         return;
       }
       searchResults.style.display = "";
-      for (const task of matches) {
+      for (const reminder of matches) {
         const item = searchResults.createDiv("ctl-result-item");
-        item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        item.createSpan({ cls: "ctl-result-title" }).setText(task.title);
+        item.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        item.createSpan({ cls: "ctl-result-title" }).setText(reminder.title);
         item.addEventListener("mousedown", (ev) => {
           ev.preventDefault();
-          linkedIds.push(task.id);
+          linkedIds.push(reminder.id);
           searchInput.value = "";
           closeSearch();
           renderLinkedList();
@@ -2667,7 +2668,7 @@ var EventModal = class extends import_obsidian10.Modal {
         tags: tagField.getTags(),
         notes: e == null ? void 0 : e.notes,
         linkedNotes: (_a2 = e == null ? void 0 : e.linkedNotes) != null ? _a2 : [],
-        linkedTaskIds: linkedIds,
+        linkedReminderIds: linkedIds,
         completedInstances: (_b2 = e == null ? void 0 : e.completedInstances) != null ? _b2 : []
       };
       if (e && e.id) {
@@ -2697,11 +2698,11 @@ var EventModal = class extends import_obsidian10.Modal {
 // src/ui/EventDetailPopup.ts
 var import_obsidian11 = require("obsidian");
 var EventDetailPopup = class extends import_obsidian11.Modal {
-  constructor(app, event, calendarManager, taskManager, timeFormat, onEdit) {
+  constructor(app, event, calendarManager, reminderManager, timeFormat, onEdit) {
     super(app);
     this.event = event;
     this.calendarManager = calendarManager;
-    this.taskManager = taskManager;
+    this.reminderManager = reminderManager;
     this.timeFormat = timeFormat;
     this.onEdit = onEdit;
   }
@@ -2725,17 +2726,17 @@ var EventDetailPopup = class extends import_obsidian11.Modal {
     if (ev.tags && ev.tags.length > 0) this.row(body, "Tags", ev.tags.join(", "));
     if (ev.linkedNotes && ev.linkedNotes.length > 0)
       this.row(body, "Linked notes", ev.linkedNotes.join(", "));
-    if (ev.linkedTaskIds && ev.linkedTaskIds.length > 0) {
-      const allTasks = await this.taskManager.getAll();
-      const linked = allTasks.filter((t) => ev.linkedTaskIds.includes(t.id));
+    if (ev.linkedReminderIds && ev.linkedReminderIds.length > 0) {
+      const allReminders = await this.reminderManager.getAll();
+      const linked = allReminders.filter((r) => ev.linkedReminderIds.includes(r.id));
       if (linked.length > 0) {
-        const tasksRow = body.createDiv("cdp-row cdp-linked-tasks-row");
-        tasksRow.createDiv("cdp-row-label").setText("Tasks");
-        const list = tasksRow.createDiv("cdp-row-value cdp-task-list");
-        for (const task of linked) {
-          const item = list.createDiv("cdp-task-item");
-          item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-          item.createSpan({ cls: "cdp-task-title" }).setText(task.title);
+        const remindersRow = body.createDiv("cdp-row cdp-linked-reminders-row");
+        remindersRow.createDiv("cdp-row-label").setText("Reminders");
+        const list = remindersRow.createDiv("cdp-row-value cdp-reminder-list");
+        for (const reminder of linked) {
+          const item = list.createDiv("cdp-reminder-item");
+          item.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+          item.createSpan({ cls: "cdp-reminder-title" }).setText(reminder.title);
         }
       }
     }
@@ -2832,14 +2833,14 @@ function formatAlert2(alert) {
 var CALENDAR_VIEW_TYPE = "chronicle-calendar-view";
 var HOUR_HEIGHT = 56;
 var CalendarView = class extends import_obsidian12.ItemView {
-  constructor(leaf, eventManager, taskManager, calendarManager, plugin) {
+  constructor(leaf, eventManager, reminderManager, calendarManager, plugin) {
     super(leaf);
     this.currentDate = /* @__PURE__ */ new Date();
     this.mode = "week";
     this._modeSet = false;
     this._renderVersion = 0;
     this.eventManager = eventManager;
-    this.taskManager = taskManager;
+    this.reminderManager = reminderManager;
     this.calendarManager = calendarManager;
     this.plugin = plugin;
   }
@@ -2857,7 +2858,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
         const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks = file.path.startsWith(this.taskManager["tasksFolder"]);
+        const inTasks = file.path.startsWith(this.reminderManager["remindersFolder"]);
         if (inEvents || inTasks) this.render();
       })
     );
@@ -2867,14 +2868,14 @@ var CalendarView = class extends import_obsidian12.ItemView {
     this.registerEvent(
       this.app.vault.on("create", (file) => {
         const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks = file.path.startsWith(this.taskManager["tasksFolder"]);
+        const inTasks = file.path.startsWith(this.reminderManager["remindersFolder"]);
         if (inEvents || inTasks) setTimeout(() => this.render(), 200);
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
         const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks = file.path.startsWith(this.taskManager["tasksFolder"]);
+        const inTasks = file.path.startsWith(this.reminderManager["remindersFolder"]);
         if (inEvents || inTasks) this.render();
       })
     );
@@ -2885,7 +2886,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
     const container = this.containerEl.children[1];
     container.empty();
     container.addClass("chronicle-cal-app");
-    const tasks = await this.taskManager.getAll();
+    const reminders = await this.reminderManager.getAll();
     if (!this._modeSet) {
       this.mode = (_a = this.plugin.settings.defaultCalendarView) != null ? _a : "week";
       this._modeSet = true;
@@ -2899,10 +2900,10 @@ var CalendarView = class extends import_obsidian12.ItemView {
     const main = layout.createDiv("chronicle-cal-main");
     this.renderSidebar(sidebar);
     this.renderToolbar(main);
-    if (this.mode === "year") this.renderYearView(main, events, tasks);
-    else if (this.mode === "month") this.renderMonthView(main, events, tasks);
-    else if (this.mode === "week") this.renderWeekView(main, events, tasks);
-    else this.renderDayView(main, events, tasks);
+    if (this.mode === "year") this.renderYearView(main, events, reminders);
+    else if (this.mode === "month") this.renderMonthView(main, events, reminders);
+    else if (this.mode === "week") this.renderWeekView(main, events, reminders);
+    else this.renderDayView(main, events, reminders);
   }
   async openEventFullPage(event) {
     const { workspace } = this.app;
@@ -2951,7 +2952,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
         this.app,
         this.eventManager,
         this.calendarManager,
-        this.taskManager,
+        this.reminderManager,
         void 0,
         () => this.render(),
         (e) => this.openEventFullPage(e)
@@ -3059,7 +3060,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
     return d;
   }
   // ── Year view ─────────────────────────────────────────────────────────────
-  renderYearView(main, events, tasks) {
+  renderYearView(main, events, reminders) {
     const year = this.currentDate.getFullYear();
     const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const yearGrid = main.createDiv("chronicle-year-grid");
@@ -3082,7 +3083,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         const hasEvent = events.some((e) => e.startDate === dateStr && this.isCalendarVisible(e.calendarId));
-        const hasTask = tasks.some((t) => t.dueDate === dateStr && t.status !== "done");
+        const hasTask = reminders.some((t) => t.dueDate === dateStr && t.status !== "done");
         const dayEl = miniGrid.createDiv("chronicle-year-day");
         dayEl.setText(String(d));
         if (dateStr === todayStr) dayEl.addClass("today");
@@ -3097,7 +3098,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
     }
   }
   // ── Month view ────────────────────────────────────────────────────────────
-  renderMonthView(main, events, tasks) {
+  renderMonthView(main, events, reminders) {
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
     const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
@@ -3132,10 +3133,10 @@ var CalendarView = class extends import_obsidian12.ItemView {
         pill.setText(event.title);
         pill.addEventListener("click", (e) => {
           e.stopPropagation();
-          new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
+          new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
         });
       });
-      tasks.filter((t) => t.dueDate === dateStr && t.status !== "done").slice(0, 2).forEach((task) => {
+      reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").slice(0, 2).forEach((task) => {
         const pill = cell.createDiv("chronicle-month-event-pill");
         pill.style.backgroundColor = "#FF3B3022";
         pill.style.borderLeft = "3px solid #FF3B30";
@@ -3151,7 +3152,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
       }
   }
   // ── Week view ─────────────────────────────────────────────────────────────
-  renderWeekView(main, events, tasks) {
+  renderWeekView(main, events, reminders) {
     const weekStart = this.getWeekStart();
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(weekStart);
@@ -3202,7 +3203,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
         this.showCalContextMenu(e.clientX, e.clientY, dateStr, false, hour, minute);
       });
       events.filter((e) => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId)).forEach((event) => this.renderEventPillTimed(timeGrid, event));
-      tasks.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
+      reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
         const top = task.dueTime ? (() => {
           const [h, m] = task.dueTime.split(":").map(Number);
           return (h + m / 60) * HOUR_HEIGHT;
@@ -3230,7 +3231,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
     }
   }
   // ── Day view ──────────────────────────────────────────────────────────────
-  renderDayView(main, events, tasks) {
+  renderDayView(main, events, reminders) {
     const dateStr = this.currentDate.toISOString().split("T")[0];
     const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const allDayEvents = events.filter((e) => e.startDate === dateStr && e.allDay && this.isCalendarVisible(e.calendarId));
@@ -3272,7 +3273,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
       this.showCalContextMenu(e.clientX, e.clientY, dateStr, false, hour, minute);
     });
     events.filter((e) => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId)).forEach((event) => this.renderEventPillTimed(eventCol, event));
-    tasks.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
+    reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
       const top = task.dueTime ? (() => {
         const [h, m] = task.dueTime.split(":").map(Number);
         return (h + m / 60) * HOUR_HEIGHT;
@@ -3304,7 +3305,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
       endDate: dateStr,
       endTime: allDay ? void 0 : endStr,
       alert: "none",
-      linkedTaskIds: [],
+      linkedReminderIds: [],
       completedInstances: [],
       createdAt: ""
     };
@@ -3312,7 +3313,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
       this.app,
       this.eventManager,
       this.calendarManager,
-      this.taskManager,
+      this.reminderManager,
       prefill,
       () => this.render(),
       (e) => this.openEventFullPage(e != null ? e : prefill)
@@ -3327,7 +3328,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
     editItem.setText("Edit event");
     editItem.addEventListener("click", () => {
       menu.remove();
-      new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
+      new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
     });
     const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
     deleteItem.setText("Delete event");
@@ -3372,7 +3373,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
       pill.createDiv("chronicle-event-pill-time").setText(this.formatTime(event.startTime));
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
-      new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
+      new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
     });
     pill.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -3391,7 +3392,7 @@ var CalendarView = class extends import_obsidian12.ItemView {
     pill.setText(event.title);
     pill.addEventListener(
       "click",
-      () => new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open()
+      () => new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open()
     );
     pill.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -3428,38 +3429,38 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
       this.settings.lists,
       () => this.saveSettings()
     );
-    this.taskManager = new TaskManager(this.app, this.settings.tasksFolder);
+    this.reminderManager = new ReminderManager(this.app, this.settings.remindersFolder);
     this.eventManager = new EventManager(this.app, this.settings.eventsFolder);
     this.alertManager = new AlertManager(
       this.app,
-      this.taskManager,
+      this.reminderManager,
       this.eventManager,
       () => this.settings
     );
     this.alertManager.start();
     this.alertManager.stop();
     this.registerView(
-      TASK_VIEW_TYPE,
-      (leaf) => new TaskView(leaf, this.taskManager, this.listManager, this)
+      REMINDER_VIEW_TYPE,
+      (leaf) => new ReminderView(leaf, this.reminderManager, this.listManager, this)
     );
     this.registerView(
-      TASK_FORM_VIEW_TYPE,
-      (leaf) => new TaskFormView(leaf, this.taskManager, this.listManager)
+      REMINDER_FORM_VIEW_TYPE,
+      (leaf) => new ReminderFormView(leaf, this.reminderManager, this.listManager)
     );
     this.registerView(
       CALENDAR_VIEW_TYPE,
-      (leaf) => new CalendarView(leaf, this.eventManager, this.taskManager, this.calendarManager, this)
+      (leaf) => new CalendarView(leaf, this.eventManager, this.reminderManager, this.calendarManager, this)
     );
     this.registerView(
       EVENT_FORM_VIEW_TYPE,
-      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.taskManager)
+      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.reminderManager)
     );
-    this.addRibbonIcon("check-circle", "Chronicle Tasks", () => this.activateTaskView());
+    this.addRibbonIcon("check-circle", "Chronicle Reminders", () => this.activateReminderView());
     this.addRibbonIcon("calendar", "Chronicle Calendar", () => this.activateCalendarView());
     this.addCommand({
       id: "open-chronicle",
-      name: "Open task dashboard",
-      callback: () => this.activateTaskView()
+      name: "Open reminder dashboard",
+      callback: () => this.activateReminderView()
     });
     this.addCommand({
       id: "open-calendar",
@@ -3467,10 +3468,10 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
       callback: () => this.activateCalendarView()
     });
     this.addCommand({
-      id: "new-task",
-      name: "New task",
+      id: "new-reminder",
+      name: "New reminder",
       hotkeys: [{ modifiers: ["Mod"], key: "n" }],
-      callback: () => this.openTaskForm()
+      callback: () => this.openReminderForm()
     });
     this.addCommand({
       id: "new-event",
@@ -3481,12 +3482,12 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
     this.addSettingTab(new ChronicleSettingsTab(this.app, this));
     console.log("Chronicle loaded \u2713");
   }
-  async activateTaskView() {
+  async activateReminderView() {
     const { workspace } = this.app;
-    let leaf = workspace.getLeavesOfType(TASK_VIEW_TYPE)[0];
+    let leaf = workspace.getLeavesOfType(REMINDER_VIEW_TYPE)[0];
     if (!leaf) {
       leaf = workspace.getLeaf("tab");
-      await leaf.setViewState({ type: TASK_VIEW_TYPE, active: true });
+      await leaf.setViewState({ type: REMINDER_VIEW_TYPE, active: true });
     }
     workspace.revealLeaf(leaf);
   }
@@ -3499,12 +3500,12 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
     }
     workspace.revealLeaf(leaf);
   }
-  async openTaskForm() {
+  async openReminderForm() {
     const { workspace } = this.app;
-    const existing = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
+    const existing = workspace.getLeavesOfType(REMINDER_FORM_VIEW_TYPE)[0];
     if (existing) existing.detach();
     const leaf = workspace.getLeaf("tab");
-    await leaf.setViewState({ type: TASK_FORM_VIEW_TYPE, active: true });
+    await leaf.setViewState({ type: REMINDER_FORM_VIEW_TYPE, active: true });
     workspace.revealLeaf(leaf);
   }
   openEventModal(event) {
@@ -3512,15 +3513,15 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
       this.app,
       this.eventManager,
       this.calendarManager,
-      this.taskManager,
+      this.reminderManager,
       event,
       void 0,
       (e) => this.openEventFullPage(e)
     ).open();
   }
   onunload() {
-    this.app.workspace.detachLeavesOfType(TASK_VIEW_TYPE);
-    this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(REMINDER_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(EVENT_FORM_VIEW_TYPE);
   }

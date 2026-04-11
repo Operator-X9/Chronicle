@@ -1,16 +1,16 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import { TaskModal } from "../ui/TaskModal";
-import { TaskDetailPopup } from "../ui/TaskDetailPopup";
+import { ReminderModal } from "../ui/ReminderModal";
+import { ReminderDetailPopup } from "../ui/ReminderDetailPopup";
 import type ChroniclePlugin from "../main";
-import { ChronicleTask } from "../types";
-import { TaskManager } from "../data/TaskManager";
+import { ChronicleReminder } from "../types";
+import { ReminderManager } from "../data/ReminderManager";
 import { ListManager } from "../data/ListManager";
-import { TaskFormView, TASK_FORM_VIEW_TYPE } from "./TaskFormView";
+import { ReminderFormView, REMINDER_FORM_VIEW_TYPE } from "./ReminderFormView";
 
-export const TASK_VIEW_TYPE = "chronicle-task-view";
+export const REMINDER_VIEW_TYPE = "chronicle-reminder-view";
 
-export class TaskView extends ItemView {
-  private taskManager: TaskManager;
+export class ReminderView extends ItemView {
+  private reminderManager: ReminderManager;
   private listManager: ListManager;
   private plugin: ChroniclePlugin;
   private currentListId: string = "today";
@@ -18,17 +18,17 @@ export class TaskView extends ItemView {
 
   constructor(
     leaf: WorkspaceLeaf,
-    taskManager: TaskManager,
+    reminderManager: ReminderManager,
     listManager: ListManager,
     plugin: ChroniclePlugin
   ) {
     super(leaf);
-    this.taskManager = taskManager;
-    this.listManager = listManager;
-    this.plugin      = plugin;
+    this.reminderManager = reminderManager;
+    this.listManager     = listManager;
+    this.plugin          = plugin;
   }
 
-  getViewType(): string { return TASK_VIEW_TYPE; }
+  getViewType(): string { return REMINDER_VIEW_TYPE; }
   getDisplayText(): string { return "Reminders"; }
   getIcon(): string { return "check-circle"; }
 
@@ -37,7 +37,7 @@ export class TaskView extends ItemView {
 
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
-        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
           this.render();
         }
       })
@@ -47,14 +47,14 @@ export class TaskView extends ItemView {
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
           setTimeout(() => this.render(), 200);
         }
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
-        if (file.path.startsWith(this.taskManager["tasksFolder"])) {
+        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
           this.render();
         }
       })
@@ -67,11 +67,11 @@ export class TaskView extends ItemView {
     container.empty();
     container.addClass("chronicle-app");
 
-    const all       = await this.taskManager.getAll();
-    const today     = await this.taskManager.getDueToday();
-    const scheduled = await this.taskManager.getScheduled();
-    const flagged   = await this.taskManager.getFlagged();
-    const overdue   = await this.taskManager.getOverdue();
+    const all       = await this.reminderManager.getAll();
+    const today     = await this.reminderManager.getDueToday();
+    const scheduled = await this.reminderManager.getScheduled();
+    const flagged   = await this.reminderManager.getFlagged();
+    const overdue   = await this.reminderManager.getOverdue();
     const lists     = this.listManager.getAll();
 
     if (this._renderVersion !== version) return;
@@ -80,11 +80,11 @@ export class TaskView extends ItemView {
     const sidebar = layout.createDiv("chronicle-sidebar");
     const main    = layout.createDiv("chronicle-main");
 
-    // ── New task button ───────────────────────────────────────────────────
-    const newTaskBtn = sidebar.createEl("button", {
-      cls: "chronicle-new-task-btn", text: "New task"
+    // ── New reminder button ───────────────────────────────────────────────────
+    const newReminderBtn = sidebar.createEl("button", {
+      cls: "chronicle-new-reminder-btn", text: "New Reminder"
     });
-    newTaskBtn.addEventListener("click", () => this.openTaskForm());
+    newReminderBtn.addEventListener("click", () => this.openReminderForm());
 
     // ── Smart list tiles ──────────────────────────────────────────────────
     const tilesGrid = sidebar.createDiv("chronicle-tiles");
@@ -92,7 +92,7 @@ export class TaskView extends ItemView {
     const tiles = [
       { id: "today",     label: "Today",     count: today.length + overdue.length, color: "#FF3B30", badge: overdue.length },
       { id: "scheduled", label: "Scheduled", count: scheduled.length,              color: "#378ADD", badge: 0 },
-      { id: "all",       label: "All",       count: all.filter(t => t.status !== "done").length, color: "#636366", badge: 0 },
+      { id: "all",       label: "All",       count: all.filter(r => r.status !== "done").length, color: "#636366", badge: 0 },
       { id: "flagged",   label: "Flagged",   count: flagged.length,                color: "#FF9500", badge: 0 },
     ];
 
@@ -120,7 +120,7 @@ export class TaskView extends ItemView {
     const completedIcon = completedRow.createDiv("chronicle-completed-icon");
     completedIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
     completedRow.createDiv("chronicle-list-name").setText("Completed");
-    const completedCount = all.filter(t => t.status === "done").length;
+    const completedCount = all.filter(r => r.status === "done").length;
     if (completedCount > 0) completedRow.createDiv("chronicle-list-count").setText(String(completedCount));
     completedRow.addEventListener("click", () => { this.currentListId = "completed"; this.render(); });
 
@@ -137,7 +137,7 @@ export class TaskView extends ItemView {
 
       row.createDiv("chronicle-list-name").setText(list.name);
 
-      const listCount = all.filter(t => t.listId === list.id && t.status !== "done").length;
+      const listCount = all.filter(r => r.listId === list.id && r.status !== "done").length;
       if (listCount > 0) row.createDiv("chronicle-list-count").setText(String(listCount));
 
       row.addEventListener("click", () => { this.currentListId = list.id; this.render(); });
@@ -149,13 +149,13 @@ export class TaskView extends ItemView {
 
   private async renderMainPanel(
     main: HTMLElement,
-    all: ChronicleTask[],
-    overdue: ChronicleTask[]
+    all: ChronicleReminder[],
+    overdue: ChronicleReminder[]
   ) {
     const header  = main.createDiv("chronicle-main-header");
     const titleEl = header.createDiv("chronicle-main-title");
 
-    let tasks: ChronicleTask[] = [];
+    let reminders: ChronicleReminder[] = [];
 
     const smartColors: Record<string, string> = {
       today: "#FF3B30", scheduled: "#378ADD", all: "#636366",
@@ -172,63 +172,63 @@ export class TaskView extends ItemView {
 
       switch (this.currentListId) {
         case "today":
-          tasks = [...overdue, ...(await this.taskManager.getDueToday())];
+          reminders = [...overdue, ...(await this.reminderManager.getDueToday())];
           break;
         case "scheduled":
-          tasks = await this.taskManager.getScheduled();
+          reminders = await this.reminderManager.getScheduled();
           break;
         case "flagged":
-          tasks = await this.taskManager.getFlagged();
+          reminders = await this.reminderManager.getFlagged();
           break;
         case "all":
-          tasks = all.filter(t => t.status !== "done");
+          reminders = all.filter(r => r.status !== "done");
           break;
         case "completed":
-          tasks = all.filter(t => t.status === "done");
+          reminders = all.filter(r => r.status === "done");
           break;
       }
     } else {
       const list = this.listManager.getById(this.currentListId);
       titleEl.setText(list?.name ?? "List");
       titleEl.style.color = list ? list.color : "var(--text-normal)";
-      tasks = all.filter(t => t.listId === this.currentListId && t.status !== "done");
+      reminders = all.filter(r => r.listId === this.currentListId && r.status !== "done");
     }
 
-    const isCompleted = this.currentListId === "completed";
-    const countTasks  = isCompleted ? tasks : tasks.filter(t => t.status !== "done");
-    const showSubtitle = this.plugin.settings.showTaskCountSubtitle ?? true;
-    if (countTasks.length > 0 && showSubtitle) {
+    const isCompleted  = this.currentListId === "completed";
+    const activeCount  = isCompleted ? reminders : reminders.filter(r => r.status !== "done");
+    const showSubtitle = this.plugin.settings.showReminderCountSubtitle ?? true;
+    if (activeCount.length > 0 && showSubtitle) {
       const subtitle = header.createDiv("chronicle-main-subtitle");
       if (isCompleted) {
         const clearBtn = subtitle.createEl("button", {
           cls: "chronicle-clear-btn", text: "Clear all"
         });
         clearBtn.addEventListener("click", async () => {
-          const all2 = await this.taskManager.getAll();
-          for (const t of all2.filter(t => t.status === "done")) {
-            await this.taskManager.delete(t.id);
+          const all2 = await this.reminderManager.getAll();
+          for (const r of all2.filter(r => r.status === "done")) {
+            await this.reminderManager.delete(r.id);
           }
           await this.render();
         });
       } else {
         subtitle.setText(
-          `${countTasks.length} ${countTasks.length === 1 ? "task" : "tasks"}`
+          `${activeCount.length} ${activeCount.length === 1 ? "reminder" : "reminders"}`
         );
       }
     }
 
-    const listEl = main.createDiv("chronicle-task-list");
+    const listEl = main.createDiv("chronicle-reminder-list");
 
-    if (tasks.length === 0) {
+    if (reminders.length === 0) {
       this.renderEmptyState(listEl);
     } else {
-      const groups = this.groupTasks(tasks);
-      for (const [group, groupTasks] of Object.entries(groups)) {
-        if (groupTasks.length === 0) continue;
+      const groups = this.groupReminders(reminders);
+      for (const [group, groupReminders] of Object.entries(groups)) {
+        if (groupReminders.length === 0) continue;
         listEl.createDiv("chronicle-group-label").setText(group);
-        const card = listEl.createDiv("chronicle-task-card-group");
-        for (const task of groupTasks) {
-          this.renderTaskRow(card, task);
+        const card = listEl.createDiv("chronicle-reminder-card-group");
+        for (const reminder of groupReminders) {
+          this.renderReminderRow(card, reminder);
         }
       }
     }
@@ -242,9 +242,9 @@ export class TaskView extends ItemView {
     empty.createDiv("chronicle-empty-subtitle").setText("Nothing left in this list.");
   }
 
-  private renderTaskRow(container: HTMLElement, task: ChronicleTask) {
-    const row       = container.createDiv("chronicle-task-row");
-    const isDone    = task.status === "done";
+  private renderReminderRow(container: HTMLElement, reminder: ChronicleReminder) {
+    const row       = container.createDiv("chronicle-reminder-row");
+    const isDone    = reminder.status === "done";
     const isArchive = this.currentListId === "completed";
 
     // Checkbox
@@ -257,8 +257,8 @@ export class TaskView extends ItemView {
       e.stopPropagation();
       checkbox.addClass("completing");
       setTimeout(async () => {
-        await this.taskManager.update({
-          ...task,
+        await this.reminderManager.update({
+          ...reminder,
           status:      isDone ? "todo" : "done",
           completedAt: isDone ? undefined : new Date().toISOString(),
         });
@@ -266,48 +266,48 @@ export class TaskView extends ItemView {
     });
 
     // Content
-    const content = row.createDiv("chronicle-task-content");
+    const content = row.createDiv("chronicle-reminder-content");
     if (!isArchive) content.addEventListener("click", () => {
-      new TaskDetailPopup(
-        this.app, task, this.listManager,
+      new ReminderDetailPopup(
+        this.app, reminder, this.listManager,
         this.plugin.settings.timeFormat,
-        () => this.openTaskForm(task)
+        () => this.openReminderForm(reminder)
       ).open();
     });
 
-    const titleEl = content.createDiv("chronicle-task-title");
-    titleEl.setText(task.title);
+    const titleEl = content.createDiv("chronicle-reminder-title");
+    titleEl.setText(reminder.title);
     if (isDone) titleEl.addClass("done");
 
     // Meta row
     const todayStr = new Date().toISOString().split("T")[0];
-    const metaRow  = content.createDiv("chronicle-task-meta");
+    const metaRow  = content.createDiv("chronicle-reminder-meta");
 
-    if (isArchive && task.completedAt) {
-      const completedDate = new Date(task.completedAt);
-      metaRow.createSpan("chronicle-task-date").setText(
+    if (isArchive && reminder.completedAt) {
+      const completedDate = new Date(reminder.completedAt);
+      metaRow.createSpan("chronicle-reminder-date").setText(
         "Completed " + completedDate.toLocaleDateString("en-US", {
           month: "short", day: "numeric", year: "numeric"
         })
       );
-    } else if (task.dueDate || task.listId) {
-      if (task.dueDate) {
-        const metaDate = metaRow.createSpan("chronicle-task-date");
-        metaDate.setText(this.formatDate(task.dueDate));
-        if (task.dueDate < todayStr) metaDate.addClass("overdue");
+    } else if (reminder.dueDate || reminder.listId) {
+      if (reminder.dueDate) {
+        const metaDate = metaRow.createSpan("chronicle-reminder-date");
+        metaDate.setText(this.formatDate(reminder.dueDate));
+        if (reminder.dueDate < todayStr) metaDate.addClass("overdue");
       }
-      if (task.listId) {
-        const list = this.listManager.getById(task.listId);
+      if (reminder.listId) {
+        const list = this.listManager.getById(reminder.listId);
         if (list) {
-          const listDot = metaRow.createSpan("chronicle-task-cal-dot");
+          const listDot = metaRow.createSpan("chronicle-reminder-cal-dot");
           listDot.style.backgroundColor = list.color;
-          metaRow.createSpan("chronicle-task-cal-name").setText(list.name);
+          metaRow.createSpan("chronicle-reminder-cal-name").setText(list.name);
         }
       }
     }
 
     // Priority flag
-    if (!isArchive && task.priority === "high") {
+    if (!isArchive && reminder.priority === "high") {
       row.createDiv("chronicle-flag").setText("⚑");
     }
 
@@ -317,12 +317,12 @@ export class TaskView extends ItemView {
       const restoreBtn = actions.createEl("button", { cls: "chronicle-archive-btn", text: "Restore" });
       restoreBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await this.taskManager.update({ ...task, status: "todo", completedAt: undefined });
+        await this.reminderManager.update({ ...reminder, status: "todo", completedAt: undefined });
       });
       const deleteBtn = actions.createEl("button", { cls: "chronicle-archive-btn chronicle-archive-btn-delete", text: "Delete" });
       deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await this.taskManager.delete(task.id);
+        await this.reminderManager.delete(reminder.id);
       });
       return;
     }
@@ -336,12 +336,12 @@ export class TaskView extends ItemView {
       menu.style.top  = `${e.clientY}px`;
 
       const editItem = menu.createDiv("chronicle-context-item");
-      editItem.setText("Edit task");
-      editItem.addEventListener("click", () => { menu.remove(); this.openTaskForm(task); });
+      editItem.setText("Edit reminder");
+      editItem.addEventListener("click", () => { menu.remove(); this.openReminderForm(reminder); });
 
       const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
-      deleteItem.setText("Delete task");
-      deleteItem.addEventListener("click", async () => { menu.remove(); await this.taskManager.delete(task.id); });
+      deleteItem.setText("Delete reminder");
+      deleteItem.addEventListener("click", async () => { menu.remove(); await this.reminderManager.delete(reminder.id); });
 
       const cancelItem = menu.createDiv("chronicle-context-item");
       cancelItem.setText("Cancel");
@@ -352,32 +352,32 @@ export class TaskView extends ItemView {
     });
   }
 
-  private groupTasks(tasks: ChronicleTask[]): Record<string, ChronicleTask[]> {
+  private groupReminders(reminders: ChronicleReminder[]): Record<string, ChronicleReminder[]> {
     const today    = new Date().toISOString().split("T")[0];
     const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
     const weekAgo  = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 
     if (this.currentListId === "completed") {
-      const groups: Record<string, ChronicleTask[]> = { "Today": [], "This week": [], "Earlier": [] };
-      for (const task of tasks) {
-        const d = task.completedAt?.split("T")[0] ?? "";
-        if (d === today)       groups["Today"].push(task);
-        else if (d >= weekAgo) groups["This week"].push(task);
-        else                   groups["Earlier"].push(task);
+      const groups: Record<string, ChronicleReminder[]> = { "Today": [], "This week": [], "Earlier": [] };
+      for (const reminder of reminders) {
+        const d = reminder.completedAt?.split("T")[0] ?? "";
+        if (d === today)       groups["Today"].push(reminder);
+        else if (d >= weekAgo) groups["This week"].push(reminder);
+        else                   groups["Earlier"].push(reminder);
       }
       return groups;
     }
 
-    const groups: Record<string, ChronicleTask[]> = {
+    const groups: Record<string, ChronicleReminder[]> = {
       "Overdue": [], "Today": [], "This week": [], "Later": [], "No date": [],
     };
-    for (const task of tasks) {
-      if (task.status === "done") continue;
-      if (!task.dueDate)            { groups["No date"].push(task);   continue; }
-      if (task.dueDate < today)     { groups["Overdue"].push(task);   continue; }
-      if (task.dueDate === today)   { groups["Today"].push(task);     continue; }
-      if (task.dueDate <= nextWeek) { groups["This week"].push(task); continue; }
-      groups["Later"].push(task);
+    for (const reminder of reminders) {
+      if (reminder.status === "done") continue;
+      if (!reminder.dueDate)                  { groups["No date"].push(reminder);   continue; }
+      if (reminder.dueDate < today)            { groups["Overdue"].push(reminder);   continue; }
+      if (reminder.dueDate === today)          { groups["Today"].push(reminder);     continue; }
+      if (reminder.dueDate <= nextWeek)        { groups["This week"].push(reminder); continue; }
+      groups["Later"].push(reminder);
     }
     return groups;
   }
@@ -390,29 +390,29 @@ export class TaskView extends ItemView {
     return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  async openTaskForm(task?: ChronicleTask) {
-    new TaskModal(
+  async openReminderForm(reminder?: ChronicleReminder) {
+    new ReminderModal(
       this.app,
-      this.taskManager,
+      this.reminderManager,
       this.listManager,
-      task,
+      reminder,
       undefined,
-      (t) => this.openTaskFullPage(t),
+      (r) => this.openReminderFullPage(r),
       this.plugin
     ).open();
   }
 
-  async openTaskFullPage(task?: ChronicleTask) {
+  async openReminderFullPage(reminder?: ChronicleReminder) {
     const { workspace } = this.app;
-    const existing = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
+    const existing = workspace.getLeavesOfType(REMINDER_FORM_VIEW_TYPE)[0];
     if (existing) existing.detach();
     const leaf = workspace.getLeaf("tab");
-    await leaf.setViewState({ type: TASK_FORM_VIEW_TYPE, active: true });
+    await leaf.setViewState({ type: REMINDER_FORM_VIEW_TYPE, active: true });
     workspace.revealLeaf(leaf);
 
     await new Promise(resolve => setTimeout(resolve, 100));
-    const formLeaf = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
-    const formView = formLeaf?.view as TaskFormView | undefined;
-    if (formView && task) formView.loadTask(task);
+    const formLeaf = workspace.getLeavesOfType(REMINDER_FORM_VIEW_TYPE)[0];
+    const formView = formLeaf?.view as ReminderFormView | undefined;
+    if (formView && reminder) formView.loadReminder(reminder);
   }
 }

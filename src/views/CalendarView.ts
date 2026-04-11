@@ -1,8 +1,8 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { EventManager } from "../data/EventManager";
-import { TaskManager } from "../data/TaskManager";
+import { ReminderManager } from "../data/ReminderManager";
 import { CalendarManager } from "../data/CalendarManager";
-import { ChronicleEvent, ChronicleTask } from "../types";
+import { ChronicleEvent, ChronicleReminder } from "../types";
 import { EventModal } from "../ui/EventModal";
 import { EventDetailPopup } from "../ui/EventDetailPopup";
 import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./EventFormView";
@@ -14,7 +14,7 @@ const HOUR_HEIGHT = 56;
 
 export class CalendarView extends ItemView {
   private eventManager:    EventManager;
-  private taskManager:     TaskManager;
+  private reminderManager:     ReminderManager;
   private calendarManager: CalendarManager;
   private plugin:          ChroniclePlugin;
   private currentDate: Date         = new Date();
@@ -25,13 +25,13 @@ export class CalendarView extends ItemView {
   constructor(
     leaf: WorkspaceLeaf,
     eventManager:    EventManager,
-    taskManager:     TaskManager,
+    reminderManager:     ReminderManager,
     calendarManager: CalendarManager,
     plugin:          ChroniclePlugin
   ) {
     super(leaf);
     this.eventManager    = eventManager;
-    this.taskManager     = taskManager;
+    this.reminderManager     = reminderManager;
     this.calendarManager = calendarManager;
     this.plugin          = plugin;
   }
@@ -48,7 +48,7 @@ export class CalendarView extends ItemView {
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
         const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks  = file.path.startsWith(this.taskManager["tasksFolder"]);
+        const inTasks  = file.path.startsWith(this.reminderManager["remindersFolder"]);
         if (inEvents || inTasks) this.render();
       })
     );
@@ -58,14 +58,14 @@ export class CalendarView extends ItemView {
     this.registerEvent(
       this.app.vault.on("create", (file) => {
         const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks  = file.path.startsWith(this.taskManager["tasksFolder"]);
+        const inTasks  = file.path.startsWith(this.reminderManager["remindersFolder"]);
         if (inEvents || inTasks) setTimeout(() => this.render(), 200);
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
         const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks  = file.path.startsWith(this.taskManager["tasksFolder"]);
+        const inTasks  = file.path.startsWith(this.reminderManager["remindersFolder"]);
         if (inEvents || inTasks) this.render();
       })
     );
@@ -77,7 +77,7 @@ export class CalendarView extends ItemView {
     container.empty();
     container.addClass("chronicle-cal-app");
 
-    const tasks  = await this.taskManager.getAll();
+    const reminders = await this.reminderManager.getAll();
 
     // Apply default view from settings if this is the first render
     if (!this._modeSet) {
@@ -99,10 +99,10 @@ export class CalendarView extends ItemView {
     this.renderSidebar(sidebar);
     this.renderToolbar(main);
 
-    if      (this.mode === "year")  this.renderYearView(main, events, tasks);
-    else if (this.mode === "month") this.renderMonthView(main, events, tasks);
-    else if (this.mode === "week")  this.renderWeekView(main, events, tasks);
-    else                            this.renderDayView(main, events, tasks);
+    if      (this.mode === "year")  this.renderYearView(main, events, reminders);
+    else if (this.mode === "month") this.renderMonthView(main, events, reminders);
+    else if (this.mode === "week")  this.renderWeekView(main, events, reminders);
+    else                            this.renderDayView(main, events, reminders);
   }
 
 private async openEventFullPage(event?: ChronicleEvent) {
@@ -154,7 +154,7 @@ private getRangeStart(): string {
     });
     newEventBtn.addEventListener("click", () => {
       new EventModal(
-        this.app, this.eventManager, this.calendarManager, this.taskManager,
+        this.app, this.eventManager, this.calendarManager, this.reminderManager,
         undefined, () => this.render(), (e) => this.openEventFullPage(e)
       ).open();
     });
@@ -277,7 +277,7 @@ private getRangeStart(): string {
 
   // ── Year view ─────────────────────────────────────────────────────────────
 
-  private renderYearView(main: HTMLElement, events: ChronicleEvent[], tasks: ChronicleTask[]) {
+  private renderYearView(main: HTMLElement, events: ChronicleEvent[], reminders: ChronicleReminder[]) {
     const year     = this.currentDate.getFullYear();
     const todayStr = new Date().toISOString().split("T")[0];
     const yearGrid = main.createDiv("chronicle-year-grid");
@@ -301,7 +301,7 @@ private getRangeStart(): string {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr  = `${year}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
         const hasEvent = events.some(e => e.startDate === dateStr && this.isCalendarVisible(e.calendarId));
-        const hasTask  = tasks.some(t => t.dueDate === dateStr && t.status !== "done");
+        const hasTask  = reminders.some(t => t.dueDate === dateStr && t.status !== "done");
         const dayEl    = miniGrid.createDiv("chronicle-year-day");
         dayEl.setText(String(d));
         if (dateStr === todayStr) dayEl.addClass("today");
@@ -314,7 +314,7 @@ private getRangeStart(): string {
 
   // ── Month view ────────────────────────────────────────────────────────────
 
-  private renderMonthView(main: HTMLElement, events: ChronicleEvent[], tasks: ChronicleTask[]) {
+  private renderMonthView(main: HTMLElement, events: ChronicleEvent[], reminders: ChronicleReminder[]) {
     const year     = this.currentDate.getFullYear();
     const month    = this.currentDate.getMonth();
     const todayStr = new Date().toISOString().split("T")[0];
@@ -355,11 +355,11 @@ private getRangeStart(): string {
           pill.setText(event.title);
           pill.addEventListener("click", (e) => {
             e.stopPropagation();
-            new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
+            new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
           });
         });
 
-      tasks.filter(t => t.dueDate === dateStr && t.status !== "done").slice(0,2)
+      reminders.filter(t => t.dueDate === dateStr && t.status !== "done").slice(0,2)
         .forEach(task => {
           const pill = cell.createDiv("chronicle-month-event-pill");
           pill.style.backgroundColor = "#FF3B3022";
@@ -379,7 +379,7 @@ private getRangeStart(): string {
 
   // ── Week view ─────────────────────────────────────────────────────────────
 
-  private renderWeekView(main: HTMLElement, events: ChronicleEvent[], tasks: ChronicleTask[]) {
+  private renderWeekView(main: HTMLElement, events: ChronicleEvent[], reminders: ChronicleReminder[]) {
     const weekStart = this.getWeekStart();
     const days: Date[] = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
@@ -453,7 +453,7 @@ private getRangeStart(): string {
         .forEach(event => this.renderEventPillTimed(timeGrid, event));
 
       // Task due pills
-      tasks.filter(t => t.dueDate === dateStr && t.status !== "done")
+      reminders.filter(t => t.dueDate === dateStr && t.status !== "done")
         .forEach(task => {
           const top  = task.dueTime
             ? (() => { const [h,m] = task.dueTime!.split(":").map(Number); return (h + m/60) * HOUR_HEIGHT; })()
@@ -485,7 +485,7 @@ private getRangeStart(): string {
 
   // ── Day view ──────────────────────────────────────────────────────────────
 
-  private renderDayView(main: HTMLElement, events: ChronicleEvent[], tasks: ChronicleTask[]) {
+  private renderDayView(main: HTMLElement, events: ChronicleEvent[], reminders: ChronicleReminder[]) {
     const dateStr      = this.currentDate.toISOString().split("T")[0];
     const todayStr     = new Date().toISOString().split("T")[0];
     const allDayEvents = events.filter(e => e.startDate === dateStr && e.allDay && this.isCalendarVisible(e.calendarId));
@@ -539,7 +539,7 @@ private getRangeStart(): string {
     events.filter(e => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId))
       .forEach(event => this.renderEventPillTimed(eventCol, event));
 
-    tasks.filter(t => t.dueDate === dateStr && t.status !== "done")
+    reminders.filter(t => t.dueDate === dateStr && t.status !== "done")
       .forEach(task => {
         const top  = task.dueTime
           ? (() => { const [h,m] = task.dueTime!.split(":").map(Number); return (h + m/60) * HOUR_HEIGHT; })()
@@ -569,11 +569,11 @@ private getRangeStart(): string {
       id: "", title: "", allDay,
       startDate: dateStr, startTime: allDay ? undefined : timeStr,
       endDate:   dateStr, endTime:   allDay ? undefined : endStr,
-      alert: "none", linkedTaskIds: [], completedInstances: [], createdAt: ""
+      alert: "none", linkedReminderIds: [], completedInstances: [], createdAt: ""
     } as ChronicleEvent;
 
     new EventModal(
-      this.app, this.eventManager, this.calendarManager, this.taskManager,
+      this.app, this.eventManager, this.calendarManager, this.reminderManager,
       prefill, () => this.render(), (e) => this.openEventFullPage(e ?? prefill)
     ).open();
   }
@@ -588,7 +588,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     editItem.setText("Edit event");
     editItem.addEventListener("click", () => {
       menu.remove();
-      new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
+      new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (e) => this.openEventFullPage(e)).open();
     });
 
     const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
@@ -637,7 +637,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
 
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
-      new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
+      new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
     });
 
     pill.addEventListener("contextmenu", (e) => {
@@ -656,7 +656,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     pill.style.color           = color;
     pill.setText(event.title);
     pill.addEventListener("click", () =>
-      new EventDetailPopup(this.app, event, this.calendarManager, this.taskManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.taskManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open()
+      new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open()
     );
 
     pill.addEventListener("contextmenu", (e) => {

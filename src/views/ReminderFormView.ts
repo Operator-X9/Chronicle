@@ -1,39 +1,39 @@
 import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
-import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
-import { TaskManager } from "../data/TaskManager";
+import { ChronicleReminder, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
+import { ReminderManager } from "../data/ReminderManager";
 import { ListManager } from "../data/ListManager";
 import { buildTagField } from "../ui/tagField";
 
-export const TASK_FORM_VIEW_TYPE = "chronicle-task-form";
+export const REMINDER_FORM_VIEW_TYPE = "chronicle-reminder-form";
 
-export class TaskFormView extends ItemView {
-  private taskManager: TaskManager;
+export class ReminderFormView extends ItemView {
+  private reminderManager: ReminderManager;
   private listManager: ListManager;
-  private editingTask: ChronicleTask | null = null;
+  private editingReminder: ChronicleReminder | null = null;
   onSave?: () => void;
 
   constructor(
     leaf: WorkspaceLeaf,
-    taskManager: TaskManager,
+    reminderManager: ReminderManager,
     listManager: ListManager,
-    editingTask?: ChronicleTask,
+    editingReminder?: ChronicleReminder,
     onSave?: () => void
   ) {
     super(leaf);
-    this.taskManager = taskManager;
-    this.listManager = listManager;
-    this.editingTask = editingTask ?? null;
-    this.onSave      = onSave;
+    this.reminderManager = reminderManager;
+    this.listManager     = listManager;
+    this.editingReminder = editingReminder ?? null;
+    this.onSave          = onSave;
   }
 
-  getViewType(): string { return TASK_FORM_VIEW_TYPE; }
-  getDisplayText(): string { return this.editingTask ? "Edit task" : "New task"; }
+  getViewType(): string { return REMINDER_FORM_VIEW_TYPE; }
+  getDisplayText(): string { return this.editingReminder ? "Edit reminder" : "New reminder"; }
   getIcon(): string { return "check-circle"; }
 
   async onOpen() { this.render(); }
 
-  loadTask(task: ChronicleTask) {
-    this.editingTask = task;
+  loadReminder(reminder: ChronicleReminder) {
+    this.editingReminder = reminder;
     this.render();
   }
 
@@ -42,36 +42,36 @@ export class TaskFormView extends ItemView {
     container.empty();
     container.addClass("chronicle-form-page");
 
-    const t     = this.editingTask;
+    const r     = this.editingReminder;
     const lists = this.listManager.getAll();
 
     // ── Header ───────────────────────────────────────────────────────────
     const header = container.createDiv("cf-header");
     const cancelBtn = header.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
-    header.createDiv("cf-header-title").setText(t ? "Edit task" : "New task");
-    const saveBtn = header.createEl("button", { cls: "cf-btn-primary", text: t ? "Save" : "Add" });
+    header.createDiv("cf-header-title").setText(r ? "Edit reminder" : "New reminder");
+    const saveBtn = header.createEl("button", { cls: "cf-btn-primary", text: r ? "Save" : "Add" });
 
     // ── Form ─────────────────────────────────────────────────────────────
     const form = container.createDiv("cf-form");
 
     // Title
     const titleInput = this.field(form, "Title").createEl("input", {
-      type: "text", cls: "cf-input cf-title-input", placeholder: "Task name"
+      type: "text", cls: "cf-input cf-title-input", placeholder: "Reminder name"
     });
-    titleInput.value = t?.title ?? "";
+    titleInput.value = r?.title ?? "";
     titleInput.focus();
 
     // Location
     const locationInput = this.field(form, "Location").createEl("input", {
       type: "text", cls: "cf-input", placeholder: "Add location"
     });
-    locationInput.value = t?.location ?? "";
+    locationInput.value = r?.location ?? "";
 
     // Status + Priority
     const row1 = form.createDiv("cf-row");
 
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
-    const statuses: { value: TaskStatus; label: string }[] = [
+    const statuses: { value: ReminderStatus; label: string }[] = [
       { value: "todo",        label: "To do" },
       { value: "in-progress", label: "In progress" },
       { value: "done",        label: "Done" },
@@ -79,11 +79,11 @@ export class TaskFormView extends ItemView {
     ];
     for (const s of statuses) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
-      if (t?.status === s.value) opt.selected = true;
+      if (r?.status === s.value) opt.selected = true;
     }
 
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
-    const priorities: { value: TaskPriority; label: string }[] = [
+    const priorities: { value: ReminderPriority; label: string }[] = [
       { value: "none",   label: "None" },
       { value: "low",    label: "Low" },
       { value: "medium", label: "Medium" },
@@ -91,15 +91,15 @@ export class TaskFormView extends ItemView {
     ];
     for (const p of priorities) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
-      if (t?.priority === p.value) opt.selected = true;
+      if (r?.priority === p.value) opt.selected = true;
     }
 
     // Due date + time
     const row2 = form.createDiv("cf-row");
     const dueDateInput = this.field(row2, "Date").createEl("input", { type: "date", cls: "cf-input" });
-    dueDateInput.value = t?.dueDate ?? "";
+    dueDateInput.value = r?.dueDate ?? "";
     const dueTimeInput = this.field(row2, "Time").createEl("input", { type: "time", cls: "cf-input" });
-    dueTimeInput.value = t?.dueTime ?? "";
+    dueTimeInput.value = r?.dueTime ?? "";
 
     // Repeat
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
@@ -111,16 +111,16 @@ export class TaskFormView extends ItemView {
       { value: "FREQ=YEARLY",                        label: "Every year" },
       { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",  label: "Weekdays" },
     ];
-    for (const r of recurrences) {
-      const opt = recSelect.createEl("option", { value: r.value, text: r.label });
-      if (t?.recurrence === r.value) opt.selected = true;
+    for (const rec of recurrences) {
+      const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
+      if (r?.recurrence === rec.value) opt.selected = true;
     }
 
     // Alert
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
     const formAlerts: { value: AlertOffset; label: string }[] = [
       { value: "none",    label: "None" },
-      { value: "at-time", label: "At time of task" },
+      { value: "at-time", label: "At time of reminder" },
       { value: "5min",    label: "5 minutes before" },
       { value: "10min",   label: "10 minutes before" },
       { value: "15min",   label: "15 minutes before" },
@@ -133,7 +133,7 @@ export class TaskFormView extends ItemView {
     ];
     for (const a of formAlerts) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
-      if (t?.alert === a.value) opt.selected = true;
+      if (r?.alert === a.value) opt.selected = true;
     }
 
     // List
@@ -141,7 +141,7 @@ export class TaskFormView extends ItemView {
     listSelect.createEl("option", { value: "", text: "None" });
     for (const list of lists) {
       const opt = listSelect.createEl("option", { value: list.id, text: list.name });
-      if (t?.listId === list.id) opt.selected = true;
+      if (r?.listId === list.id) opt.selected = true;
     }
     const updateListColor = () => {
       const list = this.listManager.getById(listSelect.value);
@@ -153,46 +153,46 @@ export class TaskFormView extends ItemView {
     updateListColor();
 
     // Tags
-    const tagField = buildTagField(this.app, this.field(form, "Tags"), t?.tags ?? []);
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), r?.tags ?? []);
 
     // Linked notes
     const linkedInput = this.field(form, "Linked notes").createEl("input", {
       type: "text", cls: "cf-input",
       placeholder: "Projects/Website, Journal/2024  (comma separated)"
     });
-    linkedInput.value = t?.linkedNotes.join(", ") ?? "";
+    linkedInput.value = r?.linkedNotes.join(", ") ?? "";
 
     // Notes
     const notesInput = this.field(form, "Notes").createEl("textarea", {
       cls: "cf-textarea", placeholder: "Add notes..."
     });
-    notesInput.value = t?.notes ?? "";
+    notesInput.value = r?.notes ?? "";
 
     // ── Actions ──────────────────────────────────────────────────────────
     cancelBtn.addEventListener("click", () => {
-      this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
+      this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     });
 
     const handleSave = async () => {
       const title = titleInput.value.trim();
       if (!title) { titleInput.focus(); titleInput.classList.add("cf-error"); return; }
 
-      if (!this.editingTask) {
-        const existing = await this.taskManager.getAll();
+      if (!this.editingReminder) {
+        const existing = await this.reminderManager.getAll();
         const duplicate = existing.find(e => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new Notice(`A task named "${title}" already exists.`, 4000);
+          new Notice(`A reminder named "${title}" already exists.`, 4000);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
         }
       }
 
-      const taskData = {
+      const reminderData = {
         title,
         location:           locationInput.value || undefined,
-        status:             statusSelect.value as TaskStatus,
-        priority:           prioritySelect.value as TaskPriority,
+        status:             statusSelect.value as ReminderStatus,
+        priority:           prioritySelect.value as ReminderPriority,
         dueDate:            dueDateInput.value || undefined,
         dueTime:            dueTimeInput.value || undefined,
         listId:             listSelect.value || undefined,
@@ -200,21 +200,21 @@ export class TaskFormView extends ItemView {
         alert:              alertSelect.value as AlertOffset,
         tags:               tagField.getTags(),
         linkedNotes:        linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : [],
-        projects:           t?.projects ?? [],
-        timeEntries:        t?.timeEntries ?? [],
-        completedInstances: t?.completedInstances ?? [],
-        customFields:       t?.customFields ?? [],
+        projects:           r?.projects ?? [],
+        timeEntries:        r?.timeEntries ?? [],
+        completedInstances: r?.completedInstances ?? [],
+        customFields:       r?.customFields ?? [],
         notes:              notesInput.value || undefined,
       };
 
-      if (t) {
-        await this.taskManager.update({ ...t, ...taskData });
+      if (r) {
+        await this.reminderManager.update({ ...r, ...reminderData });
       } else {
-        await this.taskManager.create(taskData);
+        await this.reminderManager.create(reminderData);
       }
 
       this.onSave?.();
-      this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
+      this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     };
 
     saveBtn.addEventListener("click", handleSave);

@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type ChroniclePlugin from "../main";
-import { CalendarColor, ChronicleCalendar, ChronicleList, TaskStatus, TaskPriority, AlertOffset } from "../types";
+import { CalendarColor, ChronicleCalendar, ChronicleList, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
 import { CalendarManager } from "../data/CalendarManager";
 
 export class ChronicleSettingsTab extends PluginSettingTab {
@@ -53,13 +53,13 @@ export class ChronicleSettingsTab extends PluginSettingTab {
     this.subHeader(el, "Storage");
 
     new Setting(el)
-      .setName("Tasks folder")
-      .setDesc("Where task notes are stored in your vault.")
+      .setName("Reminders folder")
+      .setDesc("Where reminder notes are stored in your vault.")
       .addText(text => text
-        .setPlaceholder("Chronicle/Tasks")
-        .setValue(this.plugin.settings.tasksFolder)
+        .setPlaceholder("Chronicle/Reminders")
+        .setValue(this.plugin.settings.remindersFolder)
         .onChange(async (value) => {
-          this.plugin.settings.tasksFolder = value || "Chronicle/Tasks";
+          this.plugin.settings.remindersFolder = value || "Chronicle/Reminders";
           await this.plugin.saveSettings();
         })
       );
@@ -137,12 +137,12 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       );
 
     new Setting(el)
-      .setName("Alert for tasks")
-      .setDesc("Enable alerts for tasks with a due time.")
+      .setName("Alert for reminders")
+      .setDesc("Enable alerts for reminders with a due time.")
       .addToggle(t => t
-        .setValue(this.plugin.settings.notifTasks ?? true)
+        .setValue(this.plugin.settings.notifReminders ?? true)
         .onChange(async (value) => {
-          this.plugin.settings.notifTasks = value;
+          this.plugin.settings.notifReminders = value;
           await this.plugin.saveSettings();
         })
       );
@@ -357,7 +357,7 @@ export class ChronicleSettingsTab extends PluginSettingTab {
   // ── Reminders ─────────────────────────────────────────────────────────────
 
   private renderReminders(el: HTMLElement) {
-    this.subHeader(el, "Task defaults");
+    this.subHeader(el, "Reminder defaults");
 
     new Setting(el)
       .setName("Default status")
@@ -366,9 +366,9 @@ export class ChronicleSettingsTab extends PluginSettingTab {
         .addOption("in-progress", "In progress")
         .addOption("done",        "Done")
         .addOption("cancelled",   "Cancelled")
-        .setValue(this.plugin.settings.defaultTaskStatus)
+        .setValue(this.plugin.settings.defaultReminderStatus)
         .onChange(async (value) => {
-          this.plugin.settings.defaultTaskStatus = value as TaskStatus;
+          this.plugin.settings.defaultReminderStatus = value as ReminderStatus;
           await this.plugin.saveSettings();
         })
       );
@@ -380,16 +380,16 @@ export class ChronicleSettingsTab extends PluginSettingTab {
         .addOption("low",    "Low")
         .addOption("medium", "Medium")
         .addOption("high",   "High")
-        .setValue(this.plugin.settings.defaultTaskPriority)
+        .setValue(this.plugin.settings.defaultReminderPriority)
         .onChange(async (value) => {
-          this.plugin.settings.defaultTaskPriority = value as TaskPriority;
+          this.plugin.settings.defaultReminderPriority = value as ReminderPriority;
           await this.plugin.saveSettings();
         })
       );
 
     new Setting(el)
       .setName("Default alert")
-      .setDesc("Alert offset applied to new tasks by default.")
+      .setDesc("Alert offset applied to new reminders by default.")
       .addDropdown(drop => this.addAlertOptions(drop)
         .setValue(this.plugin.settings.defaultAlert)
         .onChange(async (value) => {
@@ -400,7 +400,7 @@ export class ChronicleSettingsTab extends PluginSettingTab {
 
     new Setting(el)
       .setName("Default list")
-      .setDesc("List assigned to new tasks by default.")
+      .setDesc("List assigned to new reminders by default.")
       .addDropdown(drop => {
         drop.addOption("", "None");
         for (const list of this.plugin.listManager.getAll()) {
@@ -483,8 +483,8 @@ export class ChronicleSettingsTab extends PluginSettingTab {
     this.subHeader(el, "Layout");
 
     new Setting(el)
-      .setName("Task list density")
-      .setDesc("Comfortable adds more padding between task rows.")
+      .setName("Reminder list density")
+      .setDesc("Comfortable adds more padding between reminder rows.")
       .addDropdown(drop => drop
         .addOption("compact",     "Compact")
         .addOption("comfortable", "Comfortable")
@@ -497,7 +497,7 @@ export class ChronicleSettingsTab extends PluginSettingTab {
 
     new Setting(el)
       .setName("Show completed count")
-      .setDesc("Show the number of completed tasks next to the Completed entry.")
+      .setDesc("Show the number of completed reminders next to the Completed entry.")
       .addToggle(t => t
         .setValue(this.plugin.settings.showCompletedCount ?? true)
         .onChange(async (value) => {
@@ -507,12 +507,12 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       );
 
     new Setting(el)
-      .setName("Show task count subtitle")
-      .setDesc("Show '3 tasks' under the list title in the main panel.")
+      .setName("Show reminder count subtitle")
+      .setDesc("Show '3 reminders' under the list title in the main panel.")
       .addToggle(t => t
-        .setValue(this.plugin.settings.showTaskCountSubtitle ?? true)
+        .setValue(this.plugin.settings.showReminderCountSubtitle ?? true)
         .onChange(async (value) => {
-          this.plugin.settings.showTaskCountSubtitle = value;
+          this.plugin.settings.showReminderCountSubtitle = value;
           await this.plugin.saveSettings();
         })
       );

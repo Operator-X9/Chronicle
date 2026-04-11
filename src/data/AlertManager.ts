@@ -1,26 +1,26 @@
 import { App, Notice, TFile } from "obsidian";
-import { TaskManager } from "./TaskManager";
+import { ReminderManager } from "./ReminderManager";
 import { EventManager } from "./EventManager";
 import { AlertOffset } from "../types";
 
 export class AlertManager {
   private getSettings: () => import("../types").ChronicleSettings;
-  private app:          App;
-  private taskManager:  TaskManager;
-  private eventManager: EventManager;
-  private intervalId:   number | null = null;
-  private firedAlerts:  Set<string>   = new Set();
-  private audioCtx:     AudioContext | null = null;
+  private app:              App;
+  private reminderManager:  ReminderManager;
+  private eventManager:     EventManager;
+  private intervalId:       number | null = null;
+  private firedAlerts:      Set<string>   = new Set();
+  private audioCtx:         AudioContext | null = null;
 
   // Store handler references so we can remove them in stop()
   private onChanged: ((file: TFile) => void) | null = null;
   private onCreate:  ((file: any)   => void) | null = null;
 
-  constructor(app: App, taskManager: TaskManager, eventManager: EventManager, getSettings: () => import("../types").ChronicleSettings) {
-    this.app          = app;
-    this.taskManager  = taskManager;
-    this.eventManager = eventManager;
-    this.getSettings  = getSettings;
+  constructor(app: App, reminderManager: ReminderManager, eventManager: EventManager, getSettings: () => import("../types").ChronicleSettings) {
+    this.app              = app;
+    this.reminderManager  = reminderManager;
+    this.eventManager     = eventManager;
+    this.getSettings      = getSettings;
   }
 
   start() {
@@ -38,15 +38,15 @@ export class AlertManager {
 
     // Re-check when files change — store refs so we can remove them
     this.onChanged = (file: TFile) => {
-      const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-      const inTasks  = file.path.startsWith(this.taskManager["tasksFolder"]);
-      if (inEvents || inTasks) setTimeout(() => this.check(), 300);
+      const inEvents    = file.path.startsWith(this.eventManager["eventsFolder"]);
+      const inReminders = file.path.startsWith(this.reminderManager["remindersFolder"]);
+      if (inEvents || inReminders) setTimeout(() => this.check(), 300);
     };
 
     this.onCreate = (file: any) => {
-      const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-      const inTasks  = file.path.startsWith(this.taskManager["tasksFolder"]);
-      if (inEvents || inTasks) setTimeout(() => this.check(), 500);
+      const inEvents    = file.path.startsWith(this.eventManager["eventsFolder"]);
+      const inReminders = file.path.startsWith(this.reminderManager["remindersFolder"]);
+      if (inEvents || inReminders) setTimeout(() => this.check(), 500);
     };
 
     this.app.metadataCache.on("changed", this.onChanged);
@@ -99,34 +99,34 @@ export class AlertManager {
       }
     }
 
-    // ── Check tasks ──────────────────────────────────────────────────────
-    const tasks = await this.taskManager.getAll();
-    console.log(`[Chronicle] Checking ${tasks.length} tasks`);
+    // ── Check reminders ──────────────────────────────────────────────────
+    const reminders = await this.reminderManager.getAll();
+    console.log(`[Chronicle] Checking ${reminders.length} reminders`);
 
-    for (const task of tasks) {
-      if (!task.alert || task.alert === "none")                  continue;
-      if (!task.dueDate && !task.dueTime)                        continue;
-      if (task.status === "done" || task.status === "cancelled") continue;
+    for (const reminder of reminders) {
+      if (!reminder.alert || reminder.alert === "none")                          continue;
+      if (!reminder.dueDate && !reminder.dueTime)                               continue;
+      if (reminder.status === "done" || reminder.status === "cancelled")        continue;
 
       const todayStr = new Date().toISOString().split("T")[0];
-      const dateStr  = task.dueDate ?? todayStr;
-      const alertKey = `task-${task.id}-${dateStr}-${task.alert}`;
+      const dateStr  = reminder.dueDate ?? todayStr;
+      const alertKey = `reminder-${reminder.id}-${dateStr}-${reminder.alert}`;
       if (this.firedAlerts.has(alertKey)) continue;
 
-      const timeStr = task.dueTime ?? "09:00";
+      const timeStr = reminder.dueTime ?? "09:00";
       const dueMs   = new Date(`${dateStr}T${timeStr}`).getTime();
-      const alertMs = dueMs - this.offsetToMs(task.alert);
+      const alertMs = dueMs - this.offsetToMs(reminder.alert);
 
-      console.log(`[Chronicle] Task "${task.title}" date="${dateStr}" time="${timeStr}" alert="${task.alert}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs)/1000)}s)`);
+      console.log(`[Chronicle] Reminder "${reminder.title}" date="${dateStr}" time="${timeStr}" alert="${reminder.alert}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs)/1000)}s)`);
 
       if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
-        console.log(`[Chronicle] FIRING alert for task "${task.title}"`);
-        this.fire(alertKey, task.title, this.buildTaskBody(task.dueDate, task.dueTime, task.alert), "task");
+        console.log(`[Chronicle] FIRING alert for reminder "${reminder.title}"`);
+        this.fire(alertKey, reminder.title, this.buildReminderBody(reminder.dueDate, reminder.dueTime, reminder.alert), "reminder");
       }
     }
   }
 
-  public fire(key: string, title: string, body: string, type: "event" | "task") {
+  public fire(key: string, title: string, body: string, type: "event" | "reminder") {
     this.firedAlerts.add(key);
     const settings = this.getSettings();
     const doMacOS    = settings.notifMacOS    ?? true;
@@ -141,7 +141,7 @@ export class AlertManager {
     // Approach 1: osascript (most reliable on macOS regardless of Electron version)
     try {
       const { exec } = (window as any).require("child_process");
-      const t = `Chronicle — ${type === "event" ? "Event" : "Task"}`;
+      const t = `Chronicle — ${type === "event" ? "Event" : "Reminder"}`;
       const b = `${title} — ${body}`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       exec(`osascript -e 'display notification "${b}" with title "${t}" sound name "Glass"'`,
         (err: any) => {
@@ -159,7 +159,7 @@ export class AlertManager {
       try {
         const { ipcRenderer } = (window as any).require("electron");
         ipcRenderer.send("show-notification", {
-          title: `Chronicle — ${type === "event" ? "Event" : "Task"}`,
+          title: `Chronicle — ${type === "event" ? "Event" : "Reminder"}`,
           body:  `${title}\n${body}`,
         });
         console.log("[Chronicle] ipcRenderer notification sent");
@@ -216,7 +216,8 @@ export class AlertManager {
     return `${this.offsetLabel(alert)} — starts at ${this.formatTime(startTime)}`;
   }
 
-  private buildTaskBody(dueDate: string, dueTime: string | undefined, alert: AlertOffset): string {
+  private buildReminderBody(dueDate: string | undefined, dueTime: string | undefined, alert: AlertOffset): string {
+    if (!dueDate) return dueTime ? `Due at ${this.formatTime(dueTime)}` : "Due now";
     const dateLabel = new Date(dueDate + "T00:00:00").toLocaleDateString("en-US", {
       weekday: "short", month: "short", day: "numeric"
     });

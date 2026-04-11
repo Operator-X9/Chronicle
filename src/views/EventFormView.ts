@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { EventManager } from "../data/EventManager";
 import { CalendarManager } from "../data/CalendarManager";
-import { TaskManager } from "../data/TaskManager";
+import { ReminderManager } from "../data/ReminderManager";
 import { ChronicleEvent, AlertOffset } from "../types";
 import { buildTagField } from "../ui/tagField";
 
@@ -10,7 +10,7 @@ export const EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
 export class EventFormView extends ItemView {
   private eventManager: EventManager;
   private calendarManager: CalendarManager;
-  private taskManager: TaskManager;
+  private reminderManager: ReminderManager;
   private editingEvent: ChronicleEvent | null = null;
   onSave?: () => void;
 
@@ -18,14 +18,14 @@ export class EventFormView extends ItemView {
     leaf: WorkspaceLeaf,
     eventManager: EventManager,
     calendarManager: CalendarManager,
-    taskManager: TaskManager,
+    reminderManager: ReminderManager,
     editingEvent?: ChronicleEvent,
     onSave?: () => void
   ) {
     super(leaf);
     this.eventManager    = eventManager;
     this.calendarManager = calendarManager;
-    this.taskManager     = taskManager;
+    this.reminderManager = reminderManager;
     this.editingEvent    = editingEvent ?? null;
     this.onSave          = onSave;
   }
@@ -49,9 +49,9 @@ export class EventFormView extends ItemView {
     const e         = this.editingEvent;
     const calendars = this.calendarManager.getAll();
 
-    // Fetch all tasks upfront for linked-tasks UI
-    const allTasks = await this.taskManager.getAll();
-    let linkedIds: string[] = [...(e?.linkedTaskIds ?? [])];
+    // Fetch all reminders upfront for linked-reminders UI
+    const allReminders = await this.reminderManager.getAll();
+    let linkedIds: string[] = [...(e?.linkedReminderIds ?? [])];
 
     // ── Header ──────────────────────────────────────────────────────────
     const header = container.createDiv("cf-header");
@@ -179,34 +179,34 @@ export class EventFormView extends ItemView {
     });
     linkedInput.value = e?.linkedNotes?.join(", ") ?? "";
 
-    // ── Linked tasks ─────────────────────────────────────────────────────
-    const linkedTasksField = this.field(form, "Linked tasks");
-    const linkedList       = linkedTasksField.createDiv("ctl-list");
+    // ── Linked reminders ─────────────────────────────────────────────────
+    const linkedRemindersField = this.field(form, "Linked reminders");
+    const linkedList           = linkedRemindersField.createDiv("ctl-list");
 
     const renderLinkedList = () => {
       linkedList.empty();
-      const items = allTasks.filter(t => linkedIds.includes(t.id));
+      const items = allReminders.filter(r => linkedIds.includes(r.id));
       if (items.length === 0) {
-        linkedList.createDiv("ctl-empty").setText("No linked tasks");
+        linkedList.createDiv("ctl-empty").setText("No linked reminders");
       }
-      for (const task of items) {
+      for (const reminder of items) {
         const row = linkedList.createDiv("ctl-item");
-        row.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        row.createSpan({ cls: "ctl-title" }).setText(task.title);
+        row.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        row.createSpan({ cls: "ctl-title" }).setText(reminder.title);
         const unlinkBtn = row.createEl("button", { cls: "ctl-unlink", text: "×" });
         unlinkBtn.addEventListener("click", () => {
-          linkedIds = linkedIds.filter(id => id !== task.id);
+          linkedIds = linkedIds.filter(id => id !== reminder.id);
           renderLinkedList();
         });
       }
     };
     renderLinkedList();
 
-    // Search to link existing tasks
-    const searchWrap    = linkedTasksField.createDiv("ctl-search-wrap");
+    // Search to link existing reminders
+    const searchWrap    = linkedRemindersField.createDiv("ctl-search-wrap");
     const searchInput   = searchWrap.createEl("input", {
       type: "text", cls: "cf-input ctl-search",
-      placeholder: "Search tasks to link…"
+      placeholder: "Search reminders to link…"
     });
     const searchResults = searchWrap.createDiv("ctl-results");
     searchResults.style.display = "none";
@@ -221,19 +221,19 @@ export class EventFormView extends ItemView {
       searchResults.empty();
       if (!q) { closeSearch(); return; }
 
-      const matches = allTasks
-        .filter(t => !linkedIds.includes(t.id) && t.title.toLowerCase().includes(q))
+      const matches = allReminders
+        .filter(r => !linkedIds.includes(r.id) && r.title.toLowerCase().includes(q))
         .slice(0, 6);
 
       if (matches.length === 0) { closeSearch(); return; }
       searchResults.style.display = "";
-      for (const task of matches) {
+      for (const reminder of matches) {
         const item = searchResults.createDiv("ctl-result-item");
-        item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-        item.createSpan({ cls: "ctl-result-title" }).setText(task.title);
+        item.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+        item.createSpan({ cls: "ctl-result-title" }).setText(reminder.title);
         item.addEventListener("mousedown", (ev) => {
           ev.preventDefault();
-          linkedIds.push(task.id);
+          linkedIds.push(reminder.id);
           searchInput.value = "";
           closeSearch();
           renderLinkedList();
@@ -245,18 +245,18 @@ export class EventFormView extends ItemView {
       setTimeout(closeSearch, 150);
     });
 
-    // Create new task and link it
-    const newTaskWrap  = linkedTasksField.createDiv("ctl-new-wrap");
-    const newTaskInput = newTaskWrap.createEl("input", {
+    // Create new reminder and link it
+    const newReminderWrap  = linkedRemindersField.createDiv("ctl-new-wrap");
+    const newReminderInput = newReminderWrap.createEl("input", {
       type: "text", cls: "cf-input ctl-new-input",
-      placeholder: "New task title…"
+      placeholder: "New reminder title…"
     });
-    const addTaskBtn = newTaskWrap.createEl("button", { cls: "cf-btn-primary ctl-add-btn", text: "Add task" });
+    const addReminderBtn = newReminderWrap.createEl("button", { cls: "cf-btn-primary ctl-add-btn", text: "Add reminder" });
 
     const createAndLink = async () => {
-      const title = newTaskInput.value.trim();
+      const title = newReminderInput.value.trim();
       if (!title) return;
-      const newTask = await this.taskManager.create({
+      const newReminder = await this.reminderManager.create({
         title,
         status:             "todo",
         priority:           "none",
@@ -268,14 +268,14 @@ export class EventFormView extends ItemView {
         customFields:       [],
         completedInstances: [],
       });
-      allTasks.push(newTask);
-      linkedIds.push(newTask.id);
-      newTaskInput.value = "";
+      allReminders.push(newReminder);
+      linkedIds.push(newReminder.id);
+      newReminderInput.value = "";
       renderLinkedList();
     };
 
-    addTaskBtn.addEventListener("click", createAndLink);
-    newTaskInput.addEventListener("keydown", (ev) => {
+    addReminderBtn.addEventListener("click", createAndLink);
+    newReminderInput.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter") { ev.preventDefault(); createAndLink(); }
     });
 
@@ -308,7 +308,7 @@ export class EventFormView extends ItemView {
         notes:       notesInput.value || undefined,
         linkedNotes: linkedInput.value ? linkedInput.value.split(",").map(s => s.trim()).filter(Boolean) : (e?.linkedNotes ?? []),
         tags:        tagField.getTags(),
-        linkedTaskIds:      linkedIds,
+        linkedReminderIds:  linkedIds,
         completedInstances: e?.completedInstances ?? [],
       };
 

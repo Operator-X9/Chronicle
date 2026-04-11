@@ -1,33 +1,33 @@
 import { App, Modal, Notice } from "obsidian";
-import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
-import { TaskManager } from "../data/TaskManager";
+import { ChronicleReminder, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
+import { ReminderManager } from "../data/ReminderManager";
 import { ListManager } from "../data/ListManager";
 import { buildTagField } from "./tagField";
 
-export class TaskModal extends Modal {
-  private taskManager: TaskManager;
+export class ReminderModal extends Modal {
+  private reminderManager: ReminderManager;
   private listManager: ListManager;
-  private editingTask: ChronicleTask | null;
+  private editingReminder: ChronicleReminder | null;
   private onSave?: () => void;
-  private onExpand?: (task?: ChronicleTask) => void;
+  private onExpand?: (reminder?: ChronicleReminder) => void;
   private plugin: any;
 
   constructor(
     app: App,
-    taskManager: TaskManager,
+    reminderManager: ReminderManager,
     listManager: ListManager,
-    editingTask?: ChronicleTask,
+    editingReminder?: ChronicleReminder,
     onSave?: () => void,
-    onExpand?: (task?: ChronicleTask) => void,
+    onExpand?: (reminder?: ChronicleReminder) => void,
     plugin?: any
   ) {
     super(app);
-    this.taskManager = taskManager;
-    this.listManager = listManager;
-    this.editingTask = editingTask ?? null;
-    this.onSave      = onSave;
-    this.onExpand    = onExpand;
-    this.plugin      = plugin;
+    this.reminderManager = reminderManager;
+    this.listManager     = listManager;
+    this.editingReminder = editingReminder ?? null;
+    this.onSave          = onSave;
+    this.onExpand        = onExpand;
+    this.plugin          = plugin;
   }
 
   onOpen() {
@@ -35,69 +35,69 @@ export class TaskModal extends Modal {
     contentEl.empty();
     contentEl.addClass("chronicle-event-modal");
 
-    const t     = this.editingTask;
+    const r     = this.editingReminder;
     const lists = this.listManager.getAll();
 
     // ── Header ──────────────────────────────────────────────────────────
     const header = contentEl.createDiv("cem-header");
-    header.createDiv("cem-title").setText(t ? "Edit task" : "New task");
+    header.createDiv("cem-title").setText(r ? "Edit reminder" : "New reminder");
 
     const expandBtn = header.createEl("button", { cls: "cf-btn-ghost cem-expand-btn" });
     expandBtn.title = "Open as full page";
     expandBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-    expandBtn.addEventListener("click", () => { this.close(); this.onExpand?.(t ?? undefined); });
+    expandBtn.addEventListener("click", () => { this.close(); this.onExpand?.(r ?? undefined); });
 
     // ── Form ─────────────────────────────────────────────────────────────
     const form = contentEl.createDiv("cem-form");
 
     // Title
     const titleInput = this.field(form, "Title").createEl("input", {
-      type: "text", cls: "cf-input cf-title-input", placeholder: "Task name"
+      type: "text", cls: "cf-input cf-title-input", placeholder: "Reminder name"
     });
-    titleInput.value = t?.title ?? "";
+    titleInput.value = r?.title ?? "";
     titleInput.focus();
 
     // Location
     const locationInput = this.field(form, "Location").createEl("input", {
       type: "text", cls: "cf-input", placeholder: "Add location"
     });
-    locationInput.value = t?.location ?? "";
+    locationInput.value = r?.location ?? "";
 
     // Status + Priority
     const row1 = form.createDiv("cf-row");
 
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
-    const statuses: { value: TaskStatus; label: string }[] = [
+    const statuses: { value: ReminderStatus; label: string }[] = [
       { value: "todo",        label: "To do" },
       { value: "in-progress", label: "In progress" },
       { value: "done",        label: "Done" },
       { value: "cancelled",   label: "Cancelled" },
     ];
-    const defaultStatus = this.plugin?.settings?.defaultTaskStatus ?? "todo";
+    const defaultStatus = this.plugin?.settings?.defaultReminderStatus ?? "todo";
     for (const s of statuses) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
-      if (t ? t.status === s.value : s.value === defaultStatus) opt.selected = true;
+      if (r ? r.status === s.value : s.value === defaultStatus) opt.selected = true;
     }
 
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
-    const priorities: { value: TaskPriority; label: string }[] = [
+    const priorities: { value: ReminderPriority; label: string }[] = [
       { value: "none",   label: "None" },
       { value: "low",    label: "Low" },
       { value: "medium", label: "Medium" },
       { value: "high",   label: "High" },
     ];
-    const defaultPriority = this.plugin?.settings?.defaultTaskPriority ?? "none";
+    const defaultPriority = this.plugin?.settings?.defaultReminderPriority ?? "none";
     for (const p of priorities) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
-      if (t ? t.priority === p.value : p.value === defaultPriority) opt.selected = true;
+      if (r ? r.priority === p.value : p.value === defaultPriority) opt.selected = true;
     }
 
     // Due date + time
     const row2 = form.createDiv("cf-row");
     const dueDateInput = this.field(row2, "Date").createEl("input", { type: "date", cls: "cf-input" });
-    dueDateInput.value = t?.dueDate ?? "";
+    dueDateInput.value = r?.dueDate ?? "";
     const dueTimeInput = this.field(row2, "Time").createEl("input", { type: "time", cls: "cf-input" });
-    dueTimeInput.value = t?.dueTime ?? "";
+    dueTimeInput.value = r?.dueTime ?? "";
 
     // Repeat
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
@@ -109,16 +109,16 @@ export class TaskModal extends Modal {
       { value: "FREQ=YEARLY",                        label: "Every year" },
       { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",  label: "Weekdays" },
     ];
-    for (const r of recurrences) {
-      const opt = recSelect.createEl("option", { value: r.value, text: r.label });
-      if (t?.recurrence === r.value) opt.selected = true;
+    for (const rec of recurrences) {
+      const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
+      if (r?.recurrence === rec.value) opt.selected = true;
     }
 
     // Alert
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const taskAlerts: { value: AlertOffset; label: string }[] = [
+    const reminderAlerts: { value: AlertOffset; label: string }[] = [
       { value: "none",    label: "None" },
-      { value: "at-time", label: "At time of task" },
+      { value: "at-time", label: "At time of reminder" },
       { value: "5min",    label: "5 minutes before" },
       { value: "10min",   label: "10 minutes before" },
       { value: "15min",   label: "15 minutes before" },
@@ -130,9 +130,9 @@ export class TaskModal extends Modal {
       { value: "1week",   label: "1 week before" },
     ];
     const defaultAlert = this.plugin?.settings?.defaultAlert ?? "none";
-    for (const a of taskAlerts) {
+    for (const a of reminderAlerts) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
-      if (t ? t.alert === a.value : a.value === defaultAlert) opt.selected = true;
+      if (r ? r.alert === a.value : a.value === defaultAlert) opt.selected = true;
     }
 
     // List
@@ -141,7 +141,7 @@ export class TaskModal extends Modal {
     listSelect.createEl("option", { value: "", text: "None" });
     for (const list of lists) {
       const opt = listSelect.createEl("option", { value: list.id, text: list.name });
-      if (t ? t.listId === list.id : list.id === defaultListId) opt.selected = true;
+      if (r ? r.listId === list.id : list.id === defaultListId) opt.selected = true;
     }
     const updateListColor = () => {
       const list = this.listManager.getById(listSelect.value);
@@ -153,23 +153,23 @@ export class TaskModal extends Modal {
     updateListColor();
 
     // Tags
-    const tagField = buildTagField(this.app, this.field(form, "Tags"), t?.tags ?? []);
+    const tagField = buildTagField(this.app, this.field(form, "Tags"), r?.tags ?? []);
 
     // ── Footer ────────────────────────────────────────────────────────────
     const footer    = contentEl.createDiv("cem-footer");
     const cancelBtn = footer.createEl("button", { cls: "cf-btn-ghost", text: "Cancel" });
 
-    if (t && t.id) {
-      const deleteBtn = footer.createEl("button", { cls: "cf-btn-delete", text: "Delete task" });
+    if (r && r.id) {
+      const deleteBtn = footer.createEl("button", { cls: "cf-btn-delete", text: "Delete reminder" });
       deleteBtn.addEventListener("click", async () => {
-        await this.taskManager.delete(t.id);
+        await this.reminderManager.delete(r.id);
         this.onSave?.();
         this.close();
       });
     }
 
     const saveBtn = footer.createEl("button", {
-      cls: "cf-btn-primary", text: t?.id ? "Save" : "Add task"
+      cls: "cf-btn-primary", text: r?.id ? "Save" : "Add reminder"
     });
 
     // ── Handlers ──────────────────────────────────────────────────────────
@@ -179,21 +179,21 @@ export class TaskModal extends Modal {
       const title = titleInput.value.trim();
       if (!title) { titleInput.focus(); titleInput.classList.add("cf-error"); return; }
 
-      if (!t?.id) {
-        const existing = await this.taskManager.getAll();
+      if (!r?.id) {
+        const existing = await this.reminderManager.getAll();
         const duplicate = existing.find(e => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new Notice(`A task named "${title}" already exists.`, 4000);
+          new Notice(`A reminder named "${title}" already exists.`, 4000);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
         }
       }
 
-      const taskData = {
+      const reminderData = {
         title,
-        status:             statusSelect.value as TaskStatus,
-        priority:           prioritySelect.value as TaskPriority,
+        status:             statusSelect.value as ReminderStatus,
+        priority:           prioritySelect.value as ReminderPriority,
         dueDate:            dueDateInput.value || undefined,
         dueTime:            dueTimeInput.value || undefined,
         listId:             listSelect.value || undefined,
@@ -201,19 +201,19 @@ export class TaskModal extends Modal {
         alert:              alertSelect.value as AlertOffset,
         location:           locationInput.value || undefined,
         tags:               tagField.getTags(),
-        notes:              t?.notes,
-        linkedNotes:        t?.linkedNotes ?? [],
-        projects:           t?.projects ?? [],
-        timeEstimate:       t?.timeEstimate,
-        timeEntries:        t?.timeEntries ?? [],
-        customFields:       t?.customFields ?? [],
-        completedInstances: t?.completedInstances ?? [],
+        notes:              r?.notes,
+        linkedNotes:        r?.linkedNotes ?? [],
+        projects:           r?.projects ?? [],
+        timeEstimate:       r?.timeEstimate,
+        timeEntries:        r?.timeEntries ?? [],
+        customFields:       r?.customFields ?? [],
+        completedInstances: r?.completedInstances ?? [],
       };
 
-      if (t?.id) {
-        await this.taskManager.update({ ...t, ...taskData });
+      if (r?.id) {
+        await this.reminderManager.update({ ...r, ...reminderData });
       } else {
-        await this.taskManager.create(taskData);
+        await this.reminderManager.create(reminderData);
       }
 
       this.onSave?.();

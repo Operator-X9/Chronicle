@@ -5,10 +5,10 @@ import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./views/EventFormView";
 import { Plugin } from "obsidian";
 import { CalendarManager } from "./data/CalendarManager";
 import { ListManager } from "./data/ListManager";
-import { TaskManager } from "./data/TaskManager";
+import { ReminderManager } from "./data/ReminderManager";
 import { EventManager } from "./data/EventManager";
-import { TaskView, TASK_VIEW_TYPE } from "./views/TaskView";
-import { TaskFormView, TASK_FORM_VIEW_TYPE } from "./views/TaskFormView";
+import { ReminderView, REMINDER_VIEW_TYPE } from "./views/ReminderView";
+import { ReminderFormView, REMINDER_FORM_VIEW_TYPE } from "./views/ReminderFormView";
 import { CalendarView, CALENDAR_VIEW_TYPE } from "./views/CalendarView";
 import { EventModal } from "./ui/EventModal";
 
@@ -16,7 +16,7 @@ export default class ChroniclePlugin extends Plugin {
   settings: ChronicleSettings;
   calendarManager: CalendarManager;
   listManager: ListManager;
-  taskManager: TaskManager;
+  reminderManager!: ReminderManager;
   eventManager: EventManager;
   alertManager: AlertManager;
 
@@ -31,12 +31,12 @@ export default class ChroniclePlugin extends Plugin {
       this.settings.lists,
       () => this.saveSettings()
     );
-    this.taskManager  = new TaskManager(this.app, this.settings.tasksFolder);
-    this.eventManager = new EventManager(this.app, this.settings.eventsFolder);
+    this.reminderManager = new ReminderManager(this.app, this.settings.remindersFolder);
+    this.eventManager    = new EventManager(this.app, this.settings.eventsFolder);
 
     this.alertManager = new AlertManager(
       this.app,
-      this.taskManager,
+      this.reminderManager,
       this.eventManager,
       () => this.settings
     );
@@ -44,29 +44,29 @@ export default class ChroniclePlugin extends Plugin {
     this.alertManager.stop();
 
     this.registerView(
-      TASK_VIEW_TYPE,
-      (leaf) => new TaskView(leaf, this.taskManager, this.listManager, this)
+      REMINDER_VIEW_TYPE,
+      (leaf) => new ReminderView(leaf, this.reminderManager, this.listManager, this)
     );
     this.registerView(
-      TASK_FORM_VIEW_TYPE,
-      (leaf) => new TaskFormView(leaf, this.taskManager, this.listManager)
+      REMINDER_FORM_VIEW_TYPE,
+      (leaf) => new ReminderFormView(leaf, this.reminderManager, this.listManager)
     );
     this.registerView(
       CALENDAR_VIEW_TYPE,
-      (leaf) => new CalendarView(leaf, this.eventManager, this.taskManager, this.calendarManager, this)
+      (leaf) => new CalendarView(leaf, this.eventManager, this.reminderManager, this.calendarManager, this)
     );
     this.registerView(
       EVENT_FORM_VIEW_TYPE,
-      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.taskManager)
+      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.reminderManager)
     );
 
-    this.addRibbonIcon("check-circle", "Chronicle Tasks", () => this.activateTaskView());
+    this.addRibbonIcon("check-circle", "Chronicle Reminders", () => this.activateReminderView());
     this.addRibbonIcon("calendar", "Chronicle Calendar", () => this.activateCalendarView());
 
     this.addCommand({
       id: "open-chronicle",
-      name: "Open task dashboard",
-      callback: () => this.activateTaskView(),
+      name: "Open reminder dashboard",
+      callback: () => this.activateReminderView(),
     });
     this.addCommand({
       id: "open-calendar",
@@ -74,10 +74,10 @@ export default class ChroniclePlugin extends Plugin {
       callback: () => this.activateCalendarView(),
     });
     this.addCommand({
-      id: "new-task",
-      name: "New task",
+      id: "new-reminder",
+      name: "New reminder",
       hotkeys: [{ modifiers: ["Mod"], key: "n" }],
-      callback: () => this.openTaskForm(),
+      callback: () => this.openReminderForm(),
     });
     this.addCommand({
       id: "new-event",
@@ -90,12 +90,12 @@ export default class ChroniclePlugin extends Plugin {
     console.log("Chronicle loaded ✓");
   }
 
-  async activateTaskView() {
+  async activateReminderView() {
     const { workspace } = this.app;
-    let leaf = workspace.getLeavesOfType(TASK_VIEW_TYPE)[0];
+    let leaf = workspace.getLeavesOfType(REMINDER_VIEW_TYPE)[0];
     if (!leaf) {
       leaf = workspace.getLeaf("tab");
-      await leaf.setViewState({ type: TASK_VIEW_TYPE, active: true });
+      await leaf.setViewState({ type: REMINDER_VIEW_TYPE, active: true });
     }
     workspace.revealLeaf(leaf);
   }
@@ -110,12 +110,12 @@ export default class ChroniclePlugin extends Plugin {
     workspace.revealLeaf(leaf);
   }
 
-  async openTaskForm() {
+  async openReminderForm() {
     const { workspace } = this.app;
-    const existing = workspace.getLeavesOfType(TASK_FORM_VIEW_TYPE)[0];
+    const existing = workspace.getLeavesOfType(REMINDER_FORM_VIEW_TYPE)[0];
     if (existing) existing.detach();
     const leaf = workspace.getLeaf("tab");
-    await leaf.setViewState({ type: TASK_FORM_VIEW_TYPE, active: true });
+    await leaf.setViewState({ type: REMINDER_FORM_VIEW_TYPE, active: true });
     workspace.revealLeaf(leaf);
   }
 
@@ -124,7 +124,7 @@ export default class ChroniclePlugin extends Plugin {
       this.app,
       this.eventManager,
       this.calendarManager,
-      this.taskManager,
+      this.reminderManager,
       event,
       undefined,
       (e) => this.openEventFullPage(e)
@@ -132,8 +132,8 @@ export default class ChroniclePlugin extends Plugin {
   }
 
   onunload() {
-    this.app.workspace.detachLeavesOfType(TASK_VIEW_TYPE);
-    this.app.workspace.detachLeavesOfType(TASK_FORM_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(REMINDER_VIEW_TYPE);
+    this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(EVENT_FORM_VIEW_TYPE);
   }

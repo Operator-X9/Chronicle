@@ -1,69 +1,69 @@
-import { ChronicleTask, TaskStatus, TaskPriority, AlertOffset } from "../types";
+import { ChronicleReminder, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
 import { App, TFile, normalizePath } from "obsidian";
 
-export class TaskManager {
-  constructor(private app: App, private tasksFolder: string) {}
+export class ReminderManager {
+  constructor(private app: App, private remindersFolder: string) {}
 
   // ── Read ────────────────────────────────────────────────────────────────────
 
-  async getAll(): Promise<ChronicleTask[]> {
-    const folder = this.app.vault.getFolderByPath(this.tasksFolder);
+  async getAll(): Promise<ChronicleReminder[]> {
+    const folder = this.app.vault.getFolderByPath(this.remindersFolder);
     if (!folder) return [];
 
-    const tasks: ChronicleTask[] = [];
+    const reminders: ChronicleReminder[] = [];
     for (const child of folder.children) {
       if (child instanceof TFile && child.extension === "md") {
-        const task = await this.fileToTask(child);
-        if (task) tasks.push(task);
+        const reminder = await this.fileToReminder(child);
+        if (reminder) reminders.push(reminder);
       }
     }
-    return tasks;
+    return reminders;
   }
 
-  async getById(id: string): Promise<ChronicleTask | null> {
+  async getById(id: string): Promise<ChronicleReminder | null> {
     const all = await this.getAll();
-    return all.find((t) => t.id === id) ?? null;
+    return all.find((r) => r.id === id) ?? null;
   }
 
   // ── Write ───────────────────────────────────────────────────────────────────
 
-  async create(task: Omit<ChronicleTask, "id" | "createdAt">): Promise<ChronicleTask> {
+  async create(reminder: Omit<ChronicleReminder, "id" | "createdAt">): Promise<ChronicleReminder> {
     await this.ensureFolder();
 
-    const full: ChronicleTask = {
-      ...task,
+    const full: ChronicleReminder = {
+      ...reminder,
       id: this.generateId(),
       createdAt: new Date().toISOString(),
     };
 
-    const path = normalizePath(`${this.tasksFolder}/${full.title}.md`);
-    await this.app.vault.create(path, this.taskToMarkdown(full));
+    const path = normalizePath(`${this.remindersFolder}/${full.title}.md`);
+    await this.app.vault.create(path, this.reminderToMarkdown(full));
     return full;
   }
 
-  async update(task: ChronicleTask): Promise<void> {
-    const file = this.findFileForTask(task.id);
+  async update(reminder: ChronicleReminder): Promise<void> {
+    const file = this.findFileForReminder(reminder.id);
     if (!file) return;
 
-    const expectedPath = normalizePath(`${this.tasksFolder}/${task.title}.md`);
+    const expectedPath = normalizePath(`${this.remindersFolder}/${reminder.title}.md`);
     if (file.path !== expectedPath) {
       await this.app.fileManager.renameFile(file, expectedPath);
     }
 
     const updatedFile = this.app.vault.getFileByPath(expectedPath) ?? file;
-    await this.app.vault.modify(updatedFile, this.taskToMarkdown(task));
+    await this.app.vault.modify(updatedFile, this.reminderToMarkdown(reminder));
   }
 
   async delete(id: string): Promise<void> {
-    const file = this.findFileForTask(id);
+    const file = this.findFileForReminder(id);
     if (file) await this.app.vault.delete(file);
   }
 
   async markComplete(id: string): Promise<void> {
-    const task = await this.getById(id);
-    if (!task) return;
+    const reminder = await this.getById(id);
+    if (!reminder) return;
     await this.update({
-      ...task,
+      ...reminder,
       status: "done",
       completedAt: new Date().toISOString(),
     });
@@ -71,68 +71,68 @@ export class TaskManager {
 
   // ── Filters ─────────────────────────────────────────────────────────────────
 
-  async getDueToday(): Promise<ChronicleTask[]> {
+  async getDueToday(): Promise<ChronicleReminder[]> {
     const today = this.todayStr();
     const all = await this.getAll();
     return all.filter(
-      (t) => t.status !== "done" && t.status !== "cancelled" && t.dueDate === today
+      (r) => r.status !== "done" && r.status !== "cancelled" && r.dueDate === today
     );
   }
 
-  async getOverdue(): Promise<ChronicleTask[]> {
+  async getOverdue(): Promise<ChronicleReminder[]> {
     const today = this.todayStr();
     const all = await this.getAll();
     return all.filter(
-      (t) => t.status !== "done" && t.status !== "cancelled" && !!t.dueDate && t.dueDate < today
+      (r) => r.status !== "done" && r.status !== "cancelled" && !!r.dueDate && r.dueDate < today
     );
   }
 
-  async getScheduled(): Promise<ChronicleTask[]> {
+  async getScheduled(): Promise<ChronicleReminder[]> {
     const all = await this.getAll();
     return all.filter(
-      (t) => t.status !== "done" && t.status !== "cancelled" && !!t.dueDate
+      (r) => r.status !== "done" && r.status !== "cancelled" && !!r.dueDate
     );
   }
 
-  async getFlagged(): Promise<ChronicleTask[]> {
+  async getFlagged(): Promise<ChronicleReminder[]> {
     const all = await this.getAll();
-    return all.filter((t) => t.priority === "high" && t.status !== "done");
+    return all.filter((r) => r.priority === "high" && r.status !== "done");
   }
 
   // ── Serialisation ───────────────────────────────────────────────────────────
 
-  private taskToMarkdown(task: ChronicleTask): string {
+  private reminderToMarkdown(reminder: ChronicleReminder): string {
     const fm: Record<string, unknown> = {
-      id:                    task.id,
-      title:                 task.title,
-      "location":            task.location ?? null,
-      status:                task.status,
-      priority:              task.priority,
-      tags:                  task.tags,
-      projects:              task.projects,
-      "linked-notes":        task.linkedNotes,
-      "list-id":             task.listId ?? null,
-      "due-date":            task.dueDate ?? null,
-      "due-time":            task.dueTime ?? null,
-      recurrence:            task.recurrence ?? null,
-      "alert":               task.alert ?? "none",
-      "time-estimate":       task.timeEstimate ?? null,
-      "time-entries":        task.timeEntries,
-      "custom-fields":       task.customFields,
-      "completed-instances": task.completedInstances,
-      "created-at":          task.createdAt,
-      "completed-at":        task.completedAt ?? null,
+      id:                    reminder.id,
+      title:                 reminder.title,
+      "location":            reminder.location ?? null,
+      status:                reminder.status,
+      priority:              reminder.priority,
+      tags:                  reminder.tags,
+      projects:              reminder.projects,
+      "linked-notes":        reminder.linkedNotes,
+      "list-id":             reminder.listId ?? null,
+      "due-date":            reminder.dueDate ?? null,
+      "due-time":            reminder.dueTime ?? null,
+      recurrence:            reminder.recurrence ?? null,
+      "alert":               reminder.alert ?? "none",
+      "time-estimate":       reminder.timeEstimate ?? null,
+      "time-entries":        reminder.timeEntries,
+      "custom-fields":       reminder.customFields,
+      "completed-instances": reminder.completedInstances,
+      "created-at":          reminder.createdAt,
+      "completed-at":        reminder.completedAt ?? null,
     };
 
     const yaml = Object.entries(fm)
       .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
       .join("\n");
 
-    const body = task.notes ? `\n${task.notes}` : "";
+    const body = reminder.notes ? `\n${reminder.notes}` : "";
     return `---\n${yaml}\n---\n${body}`;
   }
 
-  private async fileToTask(file: TFile): Promise<ChronicleTask | null> {
+  private async fileToReminder(file: TFile): Promise<ChronicleReminder | null> {
     try {
       const cache = this.app.metadataCache.getFileCache(file);
       const fm = cache?.frontmatter;
@@ -146,13 +146,13 @@ export class TaskManager {
         id:                 fm.id,
         title:              fm.title,
         location:           fm.location ?? undefined,
-        status:             (fm.status as TaskStatus) ?? "todo",
-        priority:           (fm.priority as TaskPriority) ?? "none",
+        status:             (fm.status as ReminderStatus) ?? "todo",
+        priority:           (fm.priority as ReminderPriority) ?? "none",
         dueDate:            fm["due-date"] ?? undefined,
         dueTime:            fm["due-time"] ?? undefined,
         recurrence:         fm.recurrence ?? undefined,
         alert:              (fm.alert as AlertOffset) ?? "none",
-        // read new list-id; fall back to legacy calendar-id so old tasks still show their list
+        // read new list-id; fall back to legacy calendar-id so old reminders still show their list
         listId:             fm["list-id"] ?? fm["calendar-id"] ?? undefined,
         tags:               fm.tags ?? [],
         linkedNotes:        fm["linked-notes"] ?? [],
@@ -172,8 +172,8 @@ export class TaskManager {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  private findFileForTask(id: string): TFile | null {
-    const folder = this.app.vault.getFolderByPath(this.tasksFolder);
+  private findFileForReminder(id: string): TFile | null {
+    const folder = this.app.vault.getFolderByPath(this.remindersFolder);
     if (!folder) return null;
     for (const child of folder.children) {
       if (!(child instanceof TFile)) continue;
@@ -184,13 +184,13 @@ export class TaskManager {
   }
 
   private async ensureFolder(): Promise<void> {
-    if (!this.app.vault.getFolderByPath(this.tasksFolder)) {
-      await this.app.vault.createFolder(this.tasksFolder);
+    if (!this.app.vault.getFolderByPath(this.remindersFolder)) {
+      await this.app.vault.createFolder(this.remindersFolder);
     }
   }
 
   private generateId(): string {
-    return `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    return `reminder-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
   private todayStr(): string {

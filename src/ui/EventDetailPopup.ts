@@ -1,27 +1,27 @@
 import { App, Modal } from "obsidian";
 import { ChronicleEvent, AlertOffset } from "../types";
 import { CalendarManager } from "../data/CalendarManager";
-import { TaskManager } from "../data/TaskManager";
+import { ReminderManager } from "../data/ReminderManager";
 
 export class EventDetailPopup extends Modal {
-  private event: ChronicleEvent;
+  private event:           ChronicleEvent;
   private calendarManager: CalendarManager;
-  private taskManager: TaskManager;
-  private timeFormat: "12h" | "24h";
-  private onEdit: () => void;
+  private reminderManager: ReminderManager;
+  private timeFormat:      "12h" | "24h";
+  private onEdit:          () => void;
 
   constructor(
     app: App,
     event: ChronicleEvent,
     calendarManager: CalendarManager,
-    taskManager: TaskManager,
+    reminderManager: ReminderManager,
     timeFormat: "12h" | "24h",
     onEdit: () => void
   ) {
     super(app);
     this.event           = event;
     this.calendarManager = calendarManager;
-    this.taskManager     = taskManager;
+    this.reminderManager = reminderManager;
     this.timeFormat      = timeFormat;
     this.onEdit          = onEdit;
   }
@@ -60,18 +60,18 @@ export class EventDetailPopup extends Modal {
     if (ev.linkedNotes && ev.linkedNotes.length > 0)
       this.row(body, "Linked notes", ev.linkedNotes.join(", "));
 
-    // Linked tasks — fetch names async
-    if (ev.linkedTaskIds && ev.linkedTaskIds.length > 0) {
-      const allTasks = await this.taskManager.getAll();
-      const linked   = allTasks.filter(t => ev.linkedTaskIds.includes(t.id));
+    // Linked reminders — fetch names async
+    if (ev.linkedReminderIds && ev.linkedReminderIds.length > 0) {
+      const allReminders = await this.reminderManager.getAll();
+      const linked       = allReminders.filter(r => ev.linkedReminderIds.includes(r.id));
       if (linked.length > 0) {
-        const tasksRow = body.createDiv("cdp-row cdp-linked-tasks-row");
-        tasksRow.createDiv("cdp-row-label").setText("Tasks");
-        const list = tasksRow.createDiv("cdp-row-value cdp-task-list");
-        for (const task of linked) {
-          const item = list.createDiv("cdp-task-item");
-          item.createSpan({ cls: `ctl-status ctl-status-${task.status}` });
-          item.createSpan({ cls: "cdp-task-title" }).setText(task.title);
+        const remindersRow = body.createDiv("cdp-row cdp-linked-reminders-row");
+        remindersRow.createDiv("cdp-row-label").setText("Reminders");
+        const list = remindersRow.createDiv("cdp-row-value cdp-reminder-list");
+        for (const reminder of linked) {
+          const item = list.createDiv("cdp-reminder-item");
+          item.createSpan({ cls: `ctl-status ctl-status-${reminder.status}` });
+          item.createSpan({ cls: "cdp-reminder-title" }).setText(reminder.title);
         }
       }
     }
