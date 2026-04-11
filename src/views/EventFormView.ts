@@ -4,6 +4,7 @@ import { CalendarManager } from "../data/CalendarManager";
 import { ReminderManager } from "../data/ReminderManager";
 import { ChronicleEvent, AlertOffset } from "../types";
 import { buildTagField } from "../ui/tagField";
+import { ALERT_OPTIONS, RECURRENCE_OPTIONS } from "../utils/constants";
 
 export const EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
 
@@ -120,35 +121,14 @@ export class EventFormView extends ItemView {
 
     // Repeat
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
-    const recurrences = [
-      { value: "",                                   label: "Never" },
-      { value: "FREQ=DAILY",                         label: "Every day" },
-      { value: "FREQ=WEEKLY",                        label: "Every week" },
-      { value: "FREQ=MONTHLY",                       label: "Every month" },
-      { value: "FREQ=YEARLY",                        label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",  label: "Weekdays" },
-    ];
-    for (const r of recurrences) {
-      const opt = recSelect.createEl("option", { value: r.value, text: r.label });
-      if (e?.recurrence === r.value) opt.selected = true;
+    for (const rec of RECURRENCE_OPTIONS) {
+      const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
+      if (e?.recurrence === rec.value) opt.selected = true;
     }
 
     // Alert
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const alerts: { value: AlertOffset; label: string }[] = [
-      { value: "none",    label: "None" },
-      { value: "at-time", label: "At time of event" },
-      { value: "5min",    label: "5 minutes before" },
-      { value: "10min",   label: "10 minutes before" },
-      { value: "15min",   label: "15 minutes before" },
-      { value: "30min",   label: "30 minutes before" },
-      { value: "1hour",   label: "1 hour before" },
-      { value: "2hours",  label: "2 hours before" },
-      { value: "1day",    label: "1 day before" },
-      { value: "2days",   label: "2 days before" },
-      { value: "1week",   label: "1 week before" },
-    ];
-    for (const a of alerts) {
+    for (const a of ALERT_OPTIONS) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if (e?.alert === a.value) opt.selected = true;
     }

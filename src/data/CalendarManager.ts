@@ -1,4 +1,4 @@
-import { ChronicleCalendar, CalendarColor } from "../types";
+import { ChronicleCalendar } from "../types";
 
 export class CalendarManager {
   private calendars: ChronicleCalendar[];
@@ -17,7 +17,7 @@ export class CalendarManager {
     return this.calendars.find((c) => c.id === id);
   }
 
-  create(name: string, color: CalendarColor): ChronicleCalendar {
+  create(name: string, color: string): ChronicleCalendar {
     const calendar: ChronicleCalendar = {
       id: this.generateId(name),
       name,
@@ -51,8 +51,7 @@ export class CalendarManager {
     }
   }
 
-  // Returns CSS hex color for a CalendarColor name
-  static colorToHex(color: CalendarColor): string {
+  static colorToHex(color: string): string {
     // If already a hex value, return it directly
     if (color.startsWith("#")) return color;
 

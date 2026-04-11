@@ -1,8 +1,10 @@
 import { App, Modal, Notice } from "obsidian";
 import { ChronicleReminder, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
+import type ChroniclePlugin from "../main";
 import { ReminderManager } from "../data/ReminderManager";
 import { ListManager } from "../data/ListManager";
 import { buildTagField } from "./tagField";
+import { ALERT_OPTIONS, RECURRENCE_OPTIONS, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
 
 export class ReminderModal extends Modal {
   private reminderManager: ReminderManager;
@@ -10,7 +12,7 @@ export class ReminderModal extends Modal {
   private editingReminder: ChronicleReminder | null;
   private onSave?: () => void;
   private onExpand?: (reminder?: ChronicleReminder) => void;
-  private plugin: any;
+  private plugin?: ChroniclePlugin;
 
   constructor(
     app: App,
@@ -19,7 +21,7 @@ export class ReminderModal extends Modal {
     editingReminder?: ChronicleReminder,
     onSave?: () => void,
     onExpand?: (reminder?: ChronicleReminder) => void,
-    plugin?: any
+    plugin?: ChroniclePlugin
   ) {
     super(app);
     this.reminderManager = reminderManager;
@@ -67,27 +69,15 @@ export class ReminderModal extends Modal {
     const row1 = form.createDiv("cf-row");
 
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
-    const statuses: { value: ReminderStatus; label: string }[] = [
-      { value: "todo",        label: "To do" },
-      { value: "in-progress", label: "In progress" },
-      { value: "done",        label: "Done" },
-      { value: "cancelled",   label: "Cancelled" },
-    ];
     const defaultStatus = this.plugin?.settings?.defaultReminderStatus ?? "todo";
-    for (const s of statuses) {
+    for (const s of STATUS_OPTIONS) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
       if (r ? r.status === s.value : s.value === defaultStatus) opt.selected = true;
     }
 
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
-    const priorities: { value: ReminderPriority; label: string }[] = [
-      { value: "none",   label: "None" },
-      { value: "low",    label: "Low" },
-      { value: "medium", label: "Medium" },
-      { value: "high",   label: "High" },
-    ];
     const defaultPriority = this.plugin?.settings?.defaultReminderPriority ?? "none";
-    for (const p of priorities) {
+    for (const p of PRIORITY_OPTIONS) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
       if (r ? r.priority === p.value : p.value === defaultPriority) opt.selected = true;
     }
@@ -101,36 +91,15 @@ export class ReminderModal extends Modal {
 
     // Repeat
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
-    const recurrences = [
-      { value: "",                                   label: "Never" },
-      { value: "FREQ=DAILY",                         label: "Every day" },
-      { value: "FREQ=WEEKLY",                        label: "Every week" },
-      { value: "FREQ=MONTHLY",                       label: "Every month" },
-      { value: "FREQ=YEARLY",                        label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",  label: "Weekdays" },
-    ];
-    for (const rec of recurrences) {
+    for (const rec of RECURRENCE_OPTIONS) {
       const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
       if (r?.recurrence === rec.value) opt.selected = true;
     }
 
     // Alert
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const reminderAlerts: { value: AlertOffset; label: string }[] = [
-      { value: "none",    label: "None" },
-      { value: "at-time", label: "At time of reminder" },
-      { value: "5min",    label: "5 minutes before" },
-      { value: "10min",   label: "10 minutes before" },
-      { value: "15min",   label: "15 minutes before" },
-      { value: "30min",   label: "30 minutes before" },
-      { value: "1hour",   label: "1 hour before" },
-      { value: "2hours",  label: "2 hours before" },
-      { value: "1day",    label: "1 day before" },
-      { value: "2days",   label: "2 days before" },
-      { value: "1week",   label: "1 week before" },
-    ];
     const defaultAlert = this.plugin?.settings?.defaultAlert ?? "none";
-    for (const a of reminderAlerts) {
+    for (const a of ALERT_OPTIONS) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if (r ? r.alert === a.value : a.value === defaultAlert) opt.selected = true;
     }

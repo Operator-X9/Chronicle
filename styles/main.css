@@ -330,46 +330,6 @@
   color: var(--text-faint);
 }
 
-/* ── New task entry ──────────────────────────────────────────────────────── */
-.chronicle-new-reminder-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 24px;
-  border-top: 1px solid var(--background-modifier-border);
-  margin-top: 4px;
-}
-
-.chronicle-new-reminder-plus {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  color: var(--text-on-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 300;
-  line-height: 1;
-  flex-shrink: 0;
-  cursor: pointer;
-  user-select: none;
-}
-
-.chronicle-new-reminder-input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  font-size: 14px;
-  color: var(--text-muted);
-  font-family: inherit;
-}
-
-.chronicle-new-reminder-input:focus { color: var(--text-normal); }
-.chronicle-new-reminder-input::placeholder { color: var(--text-faint); }
-
 /* ── Context menu ────────────────────────────────────────────────────────── */
 .chronicle-context-menu {
   position: fixed;
@@ -1212,6 +1172,28 @@
 }
 
 .chronicle-month-event-pill:hover { opacity: 0.82; }
+
+.chronicle-task-pill {
+  background-color: color-mix(in srgb, var(--color-red) 13%, transparent);
+  border-left: 3px solid var(--color-red);
+  color: var(--color-red);
+}
+
+.chronicle-task-day-pill {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: color-mix(in srgb, var(--color-red) 13%, transparent);
+  border-left: 3px solid var(--color-red);
+  color: var(--color-red);
+}
 
 /* ── Day view ─────────────────────────────────────────────────────────── */
 .chronicle-day-view {

@@ -3,6 +3,7 @@ import { ChronicleReminder, ReminderStatus, ReminderPriority, AlertOffset } from
 import { ReminderManager } from "../data/ReminderManager";
 import { ListManager } from "../data/ListManager";
 import { buildTagField } from "../ui/tagField";
+import { ALERT_OPTIONS, RECURRENCE_OPTIONS, STATUS_OPTIONS, PRIORITY_OPTIONS } from "../utils/constants";
 
 export const REMINDER_FORM_VIEW_TYPE = "chronicle-reminder-form";
 
@@ -71,25 +72,13 @@ export class ReminderFormView extends ItemView {
     const row1 = form.createDiv("cf-row");
 
     const statusSelect = this.field(row1, "Status").createEl("select", { cls: "cf-select" });
-    const statuses: { value: ReminderStatus; label: string }[] = [
-      { value: "todo",        label: "To do" },
-      { value: "in-progress", label: "In progress" },
-      { value: "done",        label: "Done" },
-      { value: "cancelled",   label: "Cancelled" },
-    ];
-    for (const s of statuses) {
+    for (const s of STATUS_OPTIONS) {
       const opt = statusSelect.createEl("option", { value: s.value, text: s.label });
       if (r?.status === s.value) opt.selected = true;
     }
 
     const prioritySelect = this.field(row1, "Priority").createEl("select", { cls: "cf-select" });
-    const priorities: { value: ReminderPriority; label: string }[] = [
-      { value: "none",   label: "None" },
-      { value: "low",    label: "Low" },
-      { value: "medium", label: "Medium" },
-      { value: "high",   label: "High" },
-    ];
-    for (const p of priorities) {
+    for (const p of PRIORITY_OPTIONS) {
       const opt = prioritySelect.createEl("option", { value: p.value, text: p.label });
       if (r?.priority === p.value) opt.selected = true;
     }
@@ -103,35 +92,14 @@ export class ReminderFormView extends ItemView {
 
     // Repeat
     const recSelect = this.field(form, "Repeat").createEl("select", { cls: "cf-select" });
-    const recurrences = [
-      { value: "",                                   label: "Never" },
-      { value: "FREQ=DAILY",                         label: "Every day" },
-      { value: "FREQ=WEEKLY",                        label: "Every week" },
-      { value: "FREQ=MONTHLY",                       label: "Every month" },
-      { value: "FREQ=YEARLY",                        label: "Every year" },
-      { value: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",  label: "Weekdays" },
-    ];
-    for (const rec of recurrences) {
+    for (const rec of RECURRENCE_OPTIONS) {
       const opt = recSelect.createEl("option", { value: rec.value, text: rec.label });
       if (r?.recurrence === rec.value) opt.selected = true;
     }
 
     // Alert
     const alertSelect = this.field(form, "Alert").createEl("select", { cls: "cf-select" });
-    const formAlerts: { value: AlertOffset; label: string }[] = [
-      { value: "none",    label: "None" },
-      { value: "at-time", label: "At time of reminder" },
-      { value: "5min",    label: "5 minutes before" },
-      { value: "10min",   label: "10 minutes before" },
-      { value: "15min",   label: "15 minutes before" },
-      { value: "30min",   label: "30 minutes before" },
-      { value: "1hour",   label: "1 hour before" },
-      { value: "2hours",  label: "2 hours before" },
-      { value: "1day",    label: "1 day before" },
-      { value: "2days",   label: "2 days before" },
-      { value: "1week",   label: "1 week before" },
-    ];
-    for (const a of formAlerts) {
+    for (const a of ALERT_OPTIONS) {
       const opt = alertSelect.createEl("option", { value: a.value, text: a.label });
       if (r?.alert === a.value) opt.selected = true;
     }

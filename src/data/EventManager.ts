@@ -198,7 +198,7 @@ export class EventManager {
         alert:                (fm.alert as AlertOffset) ?? "none",
         tags:                 fm["tags"] ?? [],
         linkedNotes:          fm["linked-notes"] ?? [],
-        linkedReminderIds:    fm["linked-reminder-ids"] ?? fm["linked-reminder-ids"] ?? [],
+        linkedReminderIds:    fm["linked-reminder-ids"] ?? [],
         completedInstances:   fm["completed-instances"] ?? [],
         createdAt:            fm["created-at"] ?? new Date().toISOString(),
         notes,

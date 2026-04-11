@@ -1,7 +1,8 @@
 import { App, Modal } from "obsidian";
-import { ChronicleEvent, AlertOffset } from "../types";
+import { ChronicleEvent } from "../types";
 import { CalendarManager } from "../data/CalendarManager";
 import { ReminderManager } from "../data/ReminderManager";
+import { formatDateFull, formatRecurrence, formatAlert } from "../utils/formatters";
 
 export class EventDetailPopup extends Modal {
   private event:           ChronicleEvent;
@@ -91,8 +92,8 @@ export class EventDetailPopup extends Modal {
   }
 
   private formatDateTime(ev: ChronicleEvent): string {
-    const startDate = formatDate(ev.startDate);
-    const endDate   = formatDate(ev.endDate);
+    const startDate = formatDateFull(ev.startDate);
+    const endDate   = formatDateFull(ev.endDate);
     const sameDay   = ev.startDate === ev.endDate;
 
     if (ev.allDay) {
@@ -136,38 +137,3 @@ export class EventDetailPopup extends Modal {
   onClose() { this.contentEl.empty(); }
 }
 
-// ── Formatters ────────────────────────────────────────────────────────────────
-
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric"
-  });
-}
-
-function formatRecurrence(rrule: string): string {
-  const map: Record<string, string> = {
-    "FREQ=DAILY":                         "Every day",
-    "FREQ=WEEKLY":                        "Every week",
-    "FREQ=MONTHLY":                       "Every month",
-    "FREQ=YEARLY":                        "Every year",
-    "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR":  "Weekdays",
-  };
-  return map[rrule] ?? rrule;
-}
-
-function formatAlert(alert: AlertOffset): string {
-  const map: Partial<Record<AlertOffset, string>> = {
-    "at-time": "At time of event",
-    "5min":    "5 minutes before",
-    "10min":   "10 minutes before",
-    "15min":   "15 minutes before",
-    "30min":   "30 minutes before",
-    "1hour":   "1 hour before",
-    "2hours":  "2 hours before",
-    "1day":    "1 day before",
-    "2days":   "2 days before",
-    "1week":   "1 week before",
-  };
-  return map[alert] ?? alert;
-}

@@ -1,10 +1,10 @@
 import { App } from "obsidian";
 import { ReminderManager } from "./ReminderManager";
 import { EventManager } from "./EventManager";
-import { AlertOffset } from "../types";
+import { AlertOffset, ChronicleSettings } from "../types";
 
 export class AlertManager {
-  private getSettings: () => import("../types").ChronicleSettings;
+  private getSettings: () => ChronicleSettings;
   private app:              App;
   private reminderManager:  ReminderManager;
   private eventManager:     EventManager;
@@ -16,7 +16,7 @@ export class AlertManager {
   private onChanged: ((file: any) => void) | null = null;
   private onCreate:  ((file: any)   => void) | null = null;
 
-  constructor(app: App, reminderManager: ReminderManager, eventManager: EventManager, getSettings: () => import("../types").ChronicleSettings) {
+  constructor(app: App, reminderManager: ReminderManager, eventManager: EventManager, getSettings: () => ChronicleSettings) {
     this.app              = app;
     this.reminderManager  = reminderManager;
     this.eventManager     = eventManager;
@@ -29,9 +29,7 @@ export class AlertManager {
       Notification.requestPermission();
     }
 
-    // Delay first check to let vault finish loading
     setTimeout(() => {
-      console.log("[Chronicle] AlertManager ready, starting poll");
       this.check();
       this.intervalId = window.setInterval(() => this.check(), 30 * 1000);
     }, 3000);
@@ -66,7 +64,6 @@ export class AlertManager {
       this.app.vault.off("create", this.onCreate);
       this.onCreate = null;
     }
-    console.log("[Chronicle] AlertManager stopped");
   }
 
   async check() {
@@ -76,57 +73,48 @@ export class AlertManager {
   }
 
   async _check() {
-    const now      = new Date();
-    const nowMs    = now.getTime();
+    const nowMs    = Date.now();
     const windowMs = 5 * 60 * 1000;
 
-    console.log(`[Chronicle] Alert check at ${now.toLocaleTimeString()}`);
-
     // ── Check events ────────────────────────────────────────────────────
-    const events = await this.eventManager.getAll();
-    console.log(`[Chronicle] Checking ${events.length} events`);
+    if (this.getSettings().notifEvents ?? true) {
+      const events = await this.eventManager.getAll();
+      for (const event of events) {
+        if (!event.alert || event.alert === "none") continue;
+        if (!event.startDate || !event.startTime)   continue;
 
-    if (this.getSettings().notifEvents ?? true) for (const event of events) {
-      if (!event.alert || event.alert === "none") continue;
-      if (!event.startDate || !event.startTime)   continue;
+        const alertKey = `event-${event.id}-${event.startDate}-${event.alert}`;
+        if (this.firedAlerts.has(alertKey)) continue;
 
-      const alertKey = `event-${event.id}-${event.startDate}-${event.alert}`;
-      if (this.firedAlerts.has(alertKey)) continue;
+        const startMs = new Date(`${event.startDate}T${event.startTime}`).getTime();
+        const alertMs = startMs - this.offsetToMs(event.alert);
 
-      const startMs = new Date(`${event.startDate}T${event.startTime}`).getTime();
-      const alertMs = startMs - this.offsetToMs(event.alert);
-
-      console.log(`[Chronicle] Event "${event.title}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs)/1000)}s)`);
-
-      if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
-        console.log(`[Chronicle] FIRING alert for event "${event.title}"`);
-        this.fire(alertKey, event.title, this.buildEventBody(event.startTime, event.alert), "event");
+        if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
+          this.fire(alertKey, event.title, this.buildEventBody(event.startTime, event.alert), "event");
+        }
       }
     }
 
     // ── Check reminders ──────────────────────────────────────────────────
-    const reminders = await this.reminderManager.getAll();
-    console.log(`[Chronicle] Checking ${reminders.length} reminders`);
+    if (this.getSettings().notifReminders ?? true) {
+      const reminders = await this.reminderManager.getAll();
+      const today = new Date().toISOString().split("T")[0];
+      for (const reminder of reminders) {
+        if (!reminder.alert || reminder.alert === "none")                    continue;
+        if (!reminder.dueDate && !reminder.dueTime)                         continue;
+        if (reminder.status === "done" || reminder.status === "cancelled")  continue;
 
-    if (this.getSettings().notifReminders ?? true) for (const reminder of reminders) {
-      if (!reminder.alert || reminder.alert === "none")                          continue;
-      if (!reminder.dueDate && !reminder.dueTime)                               continue;
-      if (reminder.status === "done" || reminder.status === "cancelled")        continue;
+        const dateStr  = reminder.dueDate ?? today;
+        const alertKey = `reminder-${reminder.id}-${dateStr}-${reminder.alert}`;
+        if (this.firedAlerts.has(alertKey)) continue;
 
-      const todayStr = new Date().toISOString().split("T")[0];
-      const dateStr  = reminder.dueDate ?? todayStr;
-      const alertKey = `reminder-${reminder.id}-${dateStr}-${reminder.alert}`;
-      if (this.firedAlerts.has(alertKey)) continue;
+        const timeStr = reminder.dueTime ?? "09:00";
+        const dueMs   = new Date(`${dateStr}T${timeStr}`).getTime();
+        const alertMs = dueMs - this.offsetToMs(reminder.alert);
 
-      const timeStr = reminder.dueTime ?? "09:00";
-      const dueMs   = new Date(`${dateStr}T${timeStr}`).getTime();
-      const alertMs = dueMs - this.offsetToMs(reminder.alert);
-
-      console.log(`[Chronicle] Reminder "${reminder.title}" date="${dateStr}" time="${timeStr}" alert="${reminder.alert}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs)/1000)}s)`);
-
-      if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
-        console.log(`[Chronicle] FIRING alert for reminder "${reminder.title}"`);
-        this.fire(alertKey, reminder.title, this.buildReminderBody(reminder.dueDate, reminder.dueTime, reminder.alert), "reminder");
+        if (nowMs >= alertMs && nowMs < alertMs + windowMs) {
+          this.fire(alertKey, reminder.title, this.buildReminderBody(reminder.dueDate, reminder.dueTime, reminder.alert), "reminder");
+        }
       }
     }
   }
@@ -144,18 +132,14 @@ export class AlertManager {
         body:   `${title}\n${body}`,
         silent: true,   // we control sound separately below
       });
-      console.log("[Chronicle] Web Notification sent");
     }
 
     // ── Sound via afplay (macOS system sounds, independent of notification) ──
     if (doSound && rawSound && rawSound !== "none") {
       try {
         const { exec } = (window as any).require("child_process");
-        exec(`afplay "/System/Library/Sounds/${rawSound}.aiff"`,
-          (err: any) => { if (err) console.log("[Chronicle] afplay failed:", err.message); }
-        );
-      } catch (err) {
-        console.log("[Chronicle] afplay unavailable:", err);
+        exec(`afplay "/System/Library/Sounds/${rawSound}.aiff"`);
+      } catch {
       }
     }
   }

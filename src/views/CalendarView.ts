@@ -7,6 +7,7 @@ import { EventModal } from "../ui/EventModal";
 import { EventDetailPopup } from "../ui/EventDetailPopup";
 import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./EventFormView";
 import type ChroniclePlugin from "../main";
+import { formatHour12, formatTime12 } from "../utils/formatters";
 
 export const CALENDAR_VIEW_TYPE = "chronicle-calendar-view";
 type CalendarMode = "day" | "week" | "month" | "year";
@@ -362,9 +363,7 @@ private getRangeStart(): string {
       reminders.filter(t => t.dueDate === dateStr && t.status !== "done").slice(0,2)
         .forEach(task => {
           const pill = cell.createDiv("chronicle-month-event-pill");
-          pill.style.backgroundColor = "#FF3B3022";
-          pill.style.borderLeft      = "3px solid #FF3B30";
-          pill.style.color           = "#FF3B30";
+          pill.addClass("chronicle-task-pill");
           pill.setText("✓ " + task.title);
         });
     }
@@ -400,7 +399,7 @@ private getRangeStart(): string {
     shelfSpacer.setText("all-day");
     // Hour labels
     for (let h = 0; h < 24; h++)
-      timeCol.createDiv("chronicle-time-slot").setText(this.formatHour(h));
+      timeCol.createDiv("chronicle-time-slot").setText(formatHour12(h));
 
     // Day columns
     for (const day of days) {
@@ -460,9 +459,7 @@ private getRangeStart(): string {
             : 0;
           const pill = timeGrid.createDiv("chronicle-task-day-pill");
           pill.style.top             = `${top}px`;
-          pill.style.backgroundColor = "#FF3B3022";
-          pill.style.borderLeft      = "3px solid #FF3B30";
-          pill.style.color           = "#FF3B30";
+          pill.addClass("chronicle-task-pill");
           pill.setText("✓ " + task.title);
         });
     }
@@ -514,7 +511,7 @@ private getRangeStart(): string {
     eventCol.style.height = `${24 * HOUR_HEIGHT}px`;
 
     for (let h = 0; h < 24; h++) {
-      timeLabels.createDiv("chronicle-time-slot").setText(this.formatHour(h));
+      timeLabels.createDiv("chronicle-time-slot").setText(formatHour12(h));
       const line = eventCol.createDiv("chronicle-hour-line");
       line.style.top = `${h * HOUR_HEIGHT}px`;
     }
@@ -546,9 +543,7 @@ private getRangeStart(): string {
           : 0;
         const pill = eventCol.createDiv("chronicle-task-day-pill");
         pill.style.top             = `${top}px`;
-        pill.style.backgroundColor = "#FF3B3022";
-        pill.style.borderLeft      = "3px solid #FF3B30";
-        pill.style.color           = "#FF3B30";
+        pill.addClass("chronicle-task-pill");
         pill.setText("✓ " + task.title);
       });
 
@@ -633,7 +628,7 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     pill.style.color           = color;
     pill.createDiv("chronicle-event-pill-title").setText(event.title);
     if (height > 36 && event.startTime)
-      pill.createDiv("chronicle-event-pill-time").setText(this.formatTime(event.startTime));
+      pill.createDiv("chronicle-event-pill-time").setText(formatTime12(event.startTime));
 
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -671,15 +666,4 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
     return this.calendarManager.getById(calendarId)?.isVisible ?? true;
   }
 
-  private formatHour(h: number): string {
-    if (h === 0)  return "12 AM";
-    if (h < 12)   return `${h} AM`;
-    if (h === 12) return "12 PM";
-    return `${h - 12} PM`;
-  }
-
-  private formatTime(timeStr: string): string {
-    const [h, m] = timeStr.split(":").map(Number);
-    return `${h % 12 || 12}:${String(m).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
-  }
 }

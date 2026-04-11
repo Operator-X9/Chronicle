@@ -1,12 +1,9 @@
 // ─── Calendars ───────────────────────────────────────────────────────────────
 
-export type CalendarColor = string;
-
 export interface ChronicleCalendar {
   id: string;
   name: string;
-  color: CalendarColor;
-  description?: string;
+  color: string;
   isVisible: boolean;
   createdAt: string;
 }

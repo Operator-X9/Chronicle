@@ -6,6 +6,7 @@ import { ChronicleReminder } from "../types";
 import { ReminderManager } from "../data/ReminderManager";
 import { ListManager } from "../data/ListManager";
 import { ReminderFormView, REMINDER_FORM_VIEW_TYPE } from "./ReminderFormView";
+import { formatDateRelative, todayStr } from "../utils/formatters";
 
 export const REMINDER_VIEW_TYPE = "chronicle-reminder-view";
 
@@ -205,17 +206,14 @@ export class ReminderView extends ItemView {
 
     let reminders: ChronicleReminder[] = [];
 
-    const smartColors: Record<string, string> = {
-      today: "#FF3B30", scheduled: "#378ADD", all: "#636366",
-      flagged: "#FF9500", completed: "#34C759"
+    const SMART_LIST_IDS = ["today", "scheduled", "all", "flagged", "completed"];
+    const SMART_LABELS: Record<string, string> = {
+      today: "Today", scheduled: "Scheduled", all: "All",
+      flagged: "Flagged", completed: "Completed",
     };
 
-    if (smartColors[this.currentListId]) {
-      const labels: Record<string, string> = {
-        today: "Today", scheduled: "Scheduled", all: "All",
-        flagged: "Flagged", completed: "Completed"
-      };
-      titleEl.setText(labels[this.currentListId]);
+    if (SMART_LIST_IDS.includes(this.currentListId)) {
+      titleEl.setText(SMART_LABELS[this.currentListId]);
       titleEl.style.color = "var(--text-normal)";
 
       switch (this.currentListId) {
@@ -328,7 +326,7 @@ export class ReminderView extends ItemView {
     if (isDone) titleEl.addClass("done");
 
     // Meta row
-    const todayStr = new Date().toISOString().split("T")[0];
+    const today = todayStr();
     const metaRow  = content.createDiv("chronicle-reminder-meta");
 
     if (isArchive && reminder.completedAt) {
@@ -341,8 +339,8 @@ export class ReminderView extends ItemView {
     } else if (reminder.dueDate || reminder.listId) {
       if (reminder.dueDate) {
         const metaDate = metaRow.createSpan("chronicle-reminder-date");
-        metaDate.setText(this.formatDate(reminder.dueDate));
-        if (reminder.dueDate < todayStr) metaDate.addClass("overdue");
+        metaDate.setText(formatDateRelative(reminder.dueDate));
+        if (reminder.dueDate < today) metaDate.addClass("overdue");
       }
       if (reminder.listId) {
         const list = this.listManager.getById(reminder.listId);
@@ -401,7 +399,7 @@ export class ReminderView extends ItemView {
   }
 
   private groupReminders(reminders: ChronicleReminder[]): Record<string, ChronicleReminder[]> {
-    const today    = new Date().toISOString().split("T")[0];
+    const today    = todayStr();
     const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
     const weekAgo  = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 
@@ -430,13 +428,6 @@ export class ReminderView extends ItemView {
     return groups;
   }
 
-  private formatDate(dateStr: string): string {
-    const today    = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-    if (dateStr === today)    return "Today";
-    if (dateStr === tomorrow) return "Tomorrow";
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
 
   async openReminderForm(reminder?: ChronicleReminder) {
     new ReminderModal(

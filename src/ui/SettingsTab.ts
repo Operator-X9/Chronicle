@@ -1,7 +1,8 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import type ChroniclePlugin from "../main";
-import { CalendarColor, ChronicleCalendar, ChronicleList, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
+import { ChronicleCalendar, ChronicleList, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
 import { CalendarManager } from "../data/CalendarManager";
+import { ALERT_OPTIONS, SOUND_OPTIONS } from "../utils/constants";
 
 export class ChronicleSettingsTab extends PluginSettingTab {
   private plugin: ChroniclePlugin;
@@ -277,7 +278,7 @@ export class ChronicleSettingsTab extends PluginSettingTab {
     addBtn.addEventListener("click", async () => {
       const name = nameInput.value.trim();
       if (!name) { nameInput.focus(); return; }
-      this.plugin.calendarManager.create(name, colorSelect.value as CalendarColor);
+      this.plugin.calendarManager.create(name, colorSelect.value);
       await this.plugin.saveSettings();
       new Notice(`Calendar "${name}" created`);
       this.display();
@@ -554,36 +555,12 @@ export class ChronicleSettingsTab extends PluginSettingTab {
   }
 
   private addSoundOptions(drop: any) {
-    return drop
-      .addOption("none",      "None (silent)")
-      .addOption("Glass",     "Glass")
-      .addOption("Ping",      "Ping")
-      .addOption("Tink",      "Tink")
-      .addOption("Basso",     "Basso")
-      .addOption("Funk",      "Funk")
-      .addOption("Hero",      "Hero")
-      .addOption("Sosumi",    "Sosumi")
-      .addOption("Submarine", "Submarine")
-      .addOption("Blow",      "Blow")
-      .addOption("Bottle",    "Bottle")
-      .addOption("Frog",      "Frog")
-      .addOption("Morse",     "Morse")
-      .addOption("Pop",       "Pop")
-      .addOption("Purr",      "Purr");
+    for (const s of SOUND_OPTIONS) drop.addOption(s.value, s.label);
+    return drop;
   }
 
   private addAlertOptions(drop: any) {
-    return drop
-      .addOption("none",    "None")
-      .addOption("at-time", "At time")
-      .addOption("5min",    "5 minutes before")
-      .addOption("10min",   "10 minutes before")
-      .addOption("15min",   "15 minutes before")
-      .addOption("30min",   "30 minutes before")
-      .addOption("1hour",   "1 hour before")
-      .addOption("2hours",  "2 hours before")
-      .addOption("1day",    "1 day before")
-      .addOption("2days",   "2 days before")
-      .addOption("1week",   "1 week before");
+    for (const a of ALERT_OPTIONS) drop.addOption(a.value, a.label);
+    return drop;
   }
 }
