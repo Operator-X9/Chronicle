@@ -41,7 +41,6 @@ export default class ChroniclePlugin extends Plugin {
       () => this.settings
     );
     this.alertManager.start();
-    this.alertManager.stop();
 
     this.registerView(
       REMINDER_VIEW_TYPE,

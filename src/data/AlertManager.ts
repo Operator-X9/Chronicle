@@ -135,9 +135,8 @@ export class AlertManager {
 
     // ── macOS native notification ──────────────────────────────────────────
     if (doMacOS) {
-      const soundName = doSound
-        ? (type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass"))
-        : "";
+      const rawSound  = type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass");
+      const soundName = (doSound && rawSound !== "none") ? rawSound : "";
 
       let notifSent = false;
       try {

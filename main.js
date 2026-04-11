@@ -605,7 +605,8 @@ var AlertManager = class {
     const doSound = (_c = settings.notifSound) != null ? _c : true;
     const icon = type === "event" ? "\u{1F5D3}" : "\u2713";
     if (doMacOS) {
-      const soundName = doSound ? type === "event" ? (_d = settings.notifSoundEvent) != null ? _d : "Glass" : (_e = settings.notifSoundReminder) != null ? _e : "Glass" : "";
+      const rawSound = type === "event" ? (_d = settings.notifSoundEvent) != null ? _d : "Glass" : (_e = settings.notifSoundReminder) != null ? _e : "Glass";
+      const soundName = doSound && rawSound !== "none" ? rawSound : "";
       let notifSent = false;
       try {
         const { exec } = window.require("child_process");
@@ -3453,7 +3454,6 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
       () => this.settings
     );
     this.alertManager.start();
-    this.alertManager.stop();
     this.registerView(
       REMINDER_VIEW_TYPE,
       (leaf) => new ReminderView(leaf, this.reminderManager, this.listManager, this)
