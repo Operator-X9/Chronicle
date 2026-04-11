@@ -1,4 +1,4 @@
-# CLAUDE.md — Chronicle Plugin Context
+# PROJECT_CONTEXT.md — Chronicle Plugin Context
 
 This file captures the architecture, design decisions, and full context for the
 Chronicle Obsidian plugin. Read this before making any changes to the codebase.
@@ -9,7 +9,7 @@ Chronicle Obsidian plugin. Read this before making any changes to the codebase.
 
 Chronicle is a from-scratch Obsidian plugin that replicates the look and
 functionality of Apple Calendar and Apple Reminders — built for users who want
-Obsidian to be their "everything app" for tasks, reminders, and calendar events.
+Obsidian to be their "everything app" for reminders and calendar events.
 
 It is **not** a fork of TaskNotes (callumalpass/tasknotes), though that plugin
 was evaluated as a starting point. The decision to start from scratch was made
@@ -22,13 +22,13 @@ would have meant replacing essentially every file anyway.
 
 ## Core design goals
 
-1. **Two separate but connected systems** — Tasks and Events are distinct types.
-   A Task is something to DO (has completion state). An Event is something that
+1. **Two separate but connected systems** — Reminders and Events are distinct types.
+   A Reminder is something to DO (has completion state). An Event is something that
    HAPPENS at a time (no completion, has a time slot on the calendar).
 
-2. **Calendars as first-class contexts** — Calendars (Work, Church, Personal,
-   Family, etc.) are full contexts with their own color, views, and visibility.
-   Both tasks and events belong to a Calendar.
+2. **Lists as first-class contexts** — Lists (Work, Church, Personal, Family, etc.)
+   are full contexts with their own color and visibility.
+   Calendars serve the same role for Events.
 
 3. **Apple design language** — The UI targets the aesthetic and interaction
    patterns of macOS Apple Calendar and Apple Reminders specifically:
@@ -37,7 +37,7 @@ would have meant replacing essentially every file anyway.
    - Colored calendar dots in the sidebar
    - Event pills in a time grid
    - Popup modal for quick creation, expand button opens full-page form
-   - Tasks grouped by Today / This Week / Later
+   - Reminders grouped by Today / This Week / Later
 
 4. **Open source, MIT licensed** — https://github.com/Operator-X9/Chronicle
 
@@ -45,13 +45,13 @@ would have meant replacing essentially every file anyway.
 
 ## File naming conventions
 
-- **Tasks:** Title only — `Buy groceries.md`
+- **Reminders:** Title only — `Buy groceries.md`
 - **Events:** Title only — `Team standup.md`
 
 All metadata lives in frontmatter, never in filenames.
 
 Default folder locations (configurable in settings):
-- Tasks → `Chronicle/Tasks/`
+- Reminders → `Chronicle/Reminders/`
 - Events → `Chronicle/Events/`
 
 ---
@@ -61,31 +61,38 @@ Default folder locations (configurable in settings):
 ```
 Chronicle/
 ├── src/
-│   ├── main.ts                    Plugin entry point
+│   ├── main.ts                        Plugin entry point
 │   ├── types/
-│   │   └── index.ts               All TypeScript interfaces + DEFAULT_SETTINGS
+│   │   └── index.ts                   All TypeScript interfaces + DEFAULT_SETTINGS
 │   ├── data/
-│   │   ├── CalendarManager.ts     CRUD for calendars (in-memory, saved to settings)
-│   │   ├── TaskManager.ts         CRUD for tasks (.md files in vault)
-│   │   ├── EventManager.ts        CRUD for events (.md files in vault)
-│   │   └── AlertManager.ts        Polls for due alerts, fires notifications
+│   │   ├── CalendarManager.ts         CRUD for calendars (in-memory, saved to settings)
+│   │   ├── ListManager.ts             CRUD for reminder lists (in-memory, saved to settings)
+│   │   ├── ReminderManager.ts         CRUD for reminders (.md files in vault)
+│   │   ├── EventManager.ts            CRUD for events (.md files in vault)
+│   │   └── AlertManager.ts            Polls for due alerts, fires notifications
 │   ├── ui/
-│   │   ├── TaskModal.ts           Quick-create/edit popup for tasks
-│   │   ├── EventModal.ts          Quick-create/edit popup for events
-│   │   └── SettingsTab.ts         Obsidian settings panel (4 tabs)
+│   │   ├── ReminderModal.ts           Quick-create/edit popup for reminders
+│   │   ├── ReminderDetailPopup.ts     Detail/edit popup for existing reminders
+│   │   ├── EventModal.ts              Quick-create/edit popup for events
+│   │   ├── EventDetailPopup.ts        Detail/edit popup for existing events
+│   │   ├── tagField.ts                Shared tag input component
+│   │   └── SettingsTab.ts             Obsidian settings panel (4 tabs)
+│   ├── utils/
+│   │   ├── formatters.ts              Shared formatting functions (date, time, status, etc.)
+│   │   └── constants.ts               Shared option arrays (ALERT_OPTIONS, STATUS_OPTIONS, etc.)
 │   └── views/
-│       ├── TaskView.ts            Task dashboard (smart lists, sidebar, cards)
-│       ├── TaskFormView.ts        Full-page task creation/editing form
-│       ├── CalendarView.ts        Calendar (day/week/month/year)
-│       └── EventFormView.ts       Full-page event creation/editing form
+│       ├── ReminderView.ts            Reminder dashboard (smart lists, sidebar, cards)
+│       ├── ReminderFormView.ts        Full-page reminder creation/editing form
+│       ├── CalendarView.ts            Calendar (day/week/month/year)
+│       └── EventFormView.ts           Full-page event creation/editing form
 ├── styles/
-│   └── main.css                   All plugin CSS
+│   └── main.css                       All plugin CSS
 ├── manifest.json
 ├── versions.json
 ├── package.json
 ├── tsconfig.json
 ├── esbuild.config.mjs
-└── CLAUDE.md
+└── PROJECT_CONTEXT.md
 ```
 
 ---
@@ -102,28 +109,37 @@ isVisible    boolean       — toggled in sidebar
 createdAt    string        — ISO 8601
 ```
 
-### ChronicleTask (frontmatter field names)
+### ChronicleList (stored in plugin settings, not vault files)
 
 ```
-id                   string     — "task-{timestamp36}-{random4}"
+id           string        — generated from name + timestamp
+name         string
+color        string        — hex value
+createdAt    string        — ISO 8601
+```
+
+### ChronicleReminder (frontmatter field names)
+
+```
+id                   string     — "reminder-{timestamp36}-{random4}"
 title                string
 status               "todo" | "in-progress" | "done" | "cancelled"
 priority             "none" | "low" | "medium" | "high"
 location             string?
-due-date             YYYY-MM-DD?
-due-time             HH:mm?
+dueDate              YYYY-MM-DD?
+dueTime              HH:mm?
 recurrence           RRULE string?
 alert                AlertOffset
-calendar-id          string?
+listId               string?
 tags                 string[]
 projects             string[]
-linked-notes         string[]
-time-estimate        number?    — minutes
-time-entries         {startTime: ISO, endTime?: ISO}[]
-custom-fields        {key: string, value: string|number|boolean}[]
-completed-instances  string[]   — YYYY-MM-DD, for recurring tasks
-created-at           ISO 8601
-completed-at         ISO 8601?
+linkedNotes          string[]
+timeEntries          {startTime: ISO, endTime?: ISO}[]
+customFields         {key: string, value: string|number|boolean}[]
+completedInstances   string[]   — YYYY-MM-DD, for recurring reminders
+notes                string?
+createdAt            ISO 8601
+completedAt          ISO 8601?
 ```
 
 Note: `contexts` field has been removed and is no longer used.
@@ -136,19 +152,20 @@ for backwards compatibility but is no longer exposed in the UI.
 id                   string     — "event-{timestamp36}-{random4}"
 title                string
 location             string?
-all-day              boolean
-start-date           YYYY-MM-DD
-start-time           HH:mm?
-end-date             YYYY-MM-DD
-end-time             HH:mm?
+allDay               boolean
+startDate            YYYY-MM-DD
+startTime            HH:mm?
+endDate              YYYY-MM-DD
+endTime              HH:mm?
 recurrence           RRULE string?
-calendar-id          string?
+calendarId           string?
 alert                AlertOffset
 tags                 string[]
-linked-notes         string[]
-linked-task-ids      string[]
-completed-instances  string[]
-created-at           ISO 8601
+linkedNotes          string[]
+linkedReminderIds    string[]
+completedInstances   string[]
+notes                string?
+createdAt            ISO 8601
 ```
 
 Note: `notes` field is only shown in the full-page form, not the popup modal.
@@ -165,28 +182,30 @@ Note: `notes` field is only shown in the full-page form, not the popup modal.
 ## ChronicleSettings (all fields)
 
 ```typescript
-tasksFolder:           string           // "Chronicle/Tasks"
+remindersFolder:       string           // "Chronicle/Reminders"
 eventsFolder:          string           // "Chronicle/Events"
 calendars:             ChronicleCalendar[]
+lists:                 ChronicleList[]
 defaultCalendarId:     string
-defaultTaskStatus:     TaskStatus
-defaultTaskPriority:   TaskPriority
+defaultListId:         string
+defaultReminderStatus: ReminderStatus
+defaultReminderPriority: ReminderPriority
 defaultAlert:          AlertOffset
 startOfWeek:           0 | 1 | 6       // 0=Sun, 1=Mon, 6=Sat
 timeFormat:            "12h" | "24h"
 defaultCalendarView:   "day"|"week"|"month"|"year"
-showTodayList:         boolean          // renamed from showTodayCount
-showScheduledList:     boolean          // renamed from showScheduledCount
+showTodayList:         boolean
+showScheduledList:     boolean
 showAllList:           boolean
-showFlaggedList:       boolean          // Flagged smart list (no settings toggle — always visible if used)
-showCompletedList:     boolean          // renamed from showCompletedCount
-smartListOrder:        string[]         // drag-to-reorder persistence, e.g. ["today","scheduled","all","flagged","completed"]
-smartListColors:       Record<string, string>  // per-tile hex color, e.g. { today: "#FF3B30", ... }
+showFlaggedList:       boolean
+showCompletedList:     boolean
+smartListOrder:        string[]         // drag-to-reorder persistence
+smartListColors:       Record<string, string>  // per-tile hex color
 notifMacOS:            boolean          // Native macOS notification
 notifObsidian:         boolean          // In-app Obsidian toast
 notifSound:            boolean          // Two-tone chime
 notifEvents:           boolean          // Alerts for events
-notifTasks:            boolean          // Alerts for tasks
+notifReminders:        boolean          // Alerts for reminders
 defaultEventDuration:  number           // minutes
 density:               "compact"|"comfortable"
 showTaskCountSubtitle: boolean
@@ -197,27 +216,59 @@ defaultCustomFields:   {key, type}[]    // Reserved, UI removed
 
 ## UI patterns
 
-### Creation/editing flow (both tasks and events)
-1. Default: popup modal opens (TaskModal / EventModal)
+### Creation/editing flow (both reminders and events)
+1. Default: popup modal opens (ReminderModal / EventModal)
 2. Expand button (⤢) in modal header → closes modal, opens full-page form tab
-3. Full-page form: TaskFormView / EventFormView
+3. Full-page form: ReminderFormView / EventFormView
 4. Both save via their respective Manager classes
 
-### Task popup (TaskModal) fields
-title, location, status, priority, date, time, calendar, repeat, alert, tags
+### Reminder popup (ReminderModal) fields
+title, location, status, priority, date, time, list, repeat, alert, tags
 
-### Task full-page form (TaskFormView) fields  
-All popup fields + linked notes, time estimate, projects, notes
+### Reminder full-page form (ReminderFormView) fields
+All popup fields + linked notes, notes, tags
 
 ### Event popup (EventModal) fields
 title, location, all-day toggle, start date, end date, start time, end time,
 repeat, calendar, alert, tags
 
 ### Event full-page form (EventFormView) fields
-All popup fields + linked notes, notes
+All popup fields + linked notes, linked reminders, notes
 
 ### Notes field
 Only shown in full-page forms, not popups. This is intentional.
+
+---
+
+## Shared utilities
+
+### `src/utils/formatters.ts`
+Central location for all date/time/status formatting. Eliminates duplication
+that previously existed across 6+ files.
+
+Exports:
+- `formatDateFull(dateStr)` — "Mon, Apr 11, 2026"
+- `formatDateRelative(dateStr)` — "Today" / "Tomorrow" / "Apr 11"
+- `formatTime12(timeStr)` — "9:00 AM"
+- `formatTime(timeStr, format)` — routes to 12h or 24h
+- `formatHour12(h)` — "9 AM", "12 PM"
+- `formatRecurrence(rrule)` — "Every week"
+- `formatAlert(alert)` — "15 minutes before"
+- `formatStatus(s)` — "In Progress"
+- `formatPriority(p)` — "High priority"
+- `formatDuration(minutes)` — "1 hr 30 min"
+- `todayStr()` — current date as "YYYY-MM-DD"
+
+### `src/utils/constants.ts`
+Central location for all option arrays used in forms, modals, and settings.
+Eliminates copy-pasted arrays that previously appeared in 4+ files.
+
+Exports:
+- `ALERT_OPTIONS` — `{ value: AlertOffset, label: string }[]`
+- `RECURRENCE_OPTIONS` — `{ value: string, label: string }[]`
+- `STATUS_OPTIONS` — `{ value: ReminderStatus, label: string }[]`
+- `PRIORITY_OPTIONS` — `{ value: ReminderPriority, label: string }[]`
+- `SOUND_OPTIONS` — macOS system sound names
 
 ---
 
@@ -227,13 +278,13 @@ Only shown in full-page forms, not popups. This is intentional.
 - Also re-checks immediately when any relevant file changes via `metadataCache`
 - First check is delayed 3 seconds after startup to let vault load
 - Fired alerts tracked in `firedAlerts: Set<string>` (session only, resets on restart)
-- Alert key format: `event-{id}-{startDate}-{alert}` / `task-{id}-{dueDate}-{alert}`
+- Alert key format: `event-{id}-{startDate}-{alert}` / `reminder-{id}-{dueDate}-{alert}`
 - Window: 5 minutes (fires if within 5 min past the alert time)
-- Tasks with no dueDate but with dueTime use today's date
+- Reminders with no dueDate but with dueTime use today's date
 
 ### Notification channels (all configurable in settings)
 1. **macOS native** — via `osascript` (most reliable, works in background)
-2. **Obsidian toast** — via `new Notice(...)` 
+2. **Obsidian toast** — via `new Notice(...)`
 3. **Sound** — two-tone chime via Web Audio API (880Hz + 1108Hz)
 
 ### CalendarManager.colorToHex
@@ -251,7 +302,7 @@ Four horizontal tabs matching Obsidian's native tab style:
 - **Calendar** — start of week, default view, default calendar, event duration,
   event alert, calendar management (add/rename/recolor/delete). No colored dot
   shown next to calendar rows (removed as redundant).
-- **Reminders** — default status/priority/alert/calendar, smart list visibility.
+- **Reminders** — default status/priority/alert/list, smart list visibility.
   Smart List Visibility section: per-tile color picker + show/hide toggle for each
   tile (Today, Scheduled, All, Completed). No colored dot shown next to rows
   (removed as redundant). "Show Flagged List" toggle was removed.
@@ -261,9 +312,10 @@ Four horizontal tabs matching Obsidian's native tab style:
 
 ## Auto-refresh pattern
 
-Both TaskView and CalendarView use `metadataCache.on("changed")` to auto-refresh
-when any file in their respective folders changes. This is the correct Obsidian
-pattern — it fires after frontmatter is fully parsed so data is always fresh.
+Both ReminderView and CalendarView use `metadataCache.on("changed")` to
+auto-refresh when any file in their respective folders changes. This is the
+correct Obsidian pattern — it fires after frontmatter is fully parsed so data
+is always fresh.
 
 Direct `this.render()` calls after write operations have been removed from most
 handlers to avoid double-renders and race conditions. The metadataCache listener
@@ -304,14 +356,14 @@ Community plugins to reload.
 ### Phase 1 — Data layer ✅
 Types, managers, plugin shell.
 
-### Phase 2 — Task dashboard ✅
-Smart list tiles, sidebar, task cards, auto-refresh, completed archive.
+### Phase 2 — Reminder dashboard ✅
+Smart list tiles, sidebar, reminder cards, auto-refresh, completed archive.
 
 ### Phase 3 — Calendar view ✅
 Day/Week/Month/Year, all-day shelf, recurrence expansion, auto-refresh.
 
 ### Phase 4 — Creation forms ✅
-Task modal + full-page form. Event modal + full-page form.
+Reminder modal + full-page form. Event modal + full-page form.
 Expand button on both modals. Delete from modals and context menus.
 
 ### Phase 5 — Alerts ✅
@@ -320,9 +372,9 @@ Per-channel and per-type toggles in settings.
 
 ### Phase 6 — Settings page ✅
 Four-tab settings panel inside Obsidian native settings.
-Calendar management with custom color picker.
+Calendar and List management with custom color picker.
 
-### Phase 7 — Polish pass ✅ (ongoing)
+### Phase 7 — Polish pass ✅
 - Completed smart list tile (moved from sidebar row into the smart list tile grid)
 - Smart list visibility toggles wired to actual show/hide behavior
 - Drag-to-reorder smart list tiles (HTML5 drag-and-drop, persisted to settings)
@@ -334,23 +386,34 @@ Calendar management with custom color picker.
 - "New Reminder" button uses `--interactive-normal` (matches all other plugin buttons)
 - Removed redundant colored dots from My Lists, My Calendars, and Smart List rows in settings
 - "Show Flagged List" toggle removed from settings
+- **Codebase refactor:** extracted `src/utils/formatters.ts` and `src/utils/constants.ts`
+  to eliminate duplication across 6+ files. Net: −110 lines. Task pills in CalendarView
+  now use CSS classes instead of hardcoded hex colors for full theme compatibility.
+- Verbose `console.log` statements removed from AlertManager.
+- `CalendarColor` type alias removed (was just `string`); `colorToHex()` signature updated.
+- Fixed redundant null-coalescing bug in EventManager frontmatter read.
+- `description` field removed from `ChronicleCalendar` interface.
+- Unused CSS classes removed from `styles/main.css`.
+- Beta release 0.1.0 published to GitHub (compatible with manual install and BRAT).
 
 ### Phase 8 — Remaining (not yet built)
-- Events linking to tasks (action items for a meeting)
+- Events linking to reminders (action items for a meeting) — UI wired in EventFormView,
+  data field `linkedReminderIds` exists; full bidirectional sync not yet implemented.
 
 ---
 
 ## Key technical decisions
 
-**CalendarColor is now `string`** — changed from a union of named colors to
-allow hex values from the color picker. `colorToHex()` handles both formats.
+**CalendarColor removed** — previously a union type of named colors, now just `string`
+(hex values from color picker). `colorToHex()` still handles legacy named colors for
+backwards compatibility with older saved data.
 
-**RRULE for recurrence** — both tasks and events use RRULE standard.
+**RRULE for recurrence** — both reminders and events use RRULE standard.
 `EventManager.getInRangeWithRecurrence()` expands recurring events into
 individual occurrences for a given date range before rendering.
 
 **Contexts removed** — the `contexts` field has been removed from the UI
-entirely. The field may still exist in older task files but is ignored.
+entirely. The field may still exist in older files but is ignored.
 
 **Notes popup exclusion** — notes field intentionally excluded from popup
 modals. Only available in full-page forms. This keeps the popup lightweight.
@@ -380,6 +443,10 @@ as a backdrop — mirroring how the Obsidian settings modal works.
 **`experimental` branch** — created for testing major changes. Merges back to
 `main` via `git checkout main && git merge experimental && git push`.
 
+**Shared utils pattern** — all formatting logic lives in `src/utils/formatters.ts`
+and all option arrays live in `src/utils/constants.ts`. Never duplicate these in
+individual views, modals, or settings files.
+
 ---
 
 ## The user / project owner
@@ -388,5 +455,5 @@ as a backdrop — mirroring how the Obsidian settings modal works.
 - On macOS, using VS Code
 - Has Node 24, npm 11, Git 2.50
 - GitHub: https://github.com/Operator-X9/Chronicle
-- Goal: a personal "everything app" inside Obsidian — tasks, reminders,
-  calendar — that feels native and polished, not like a developer tool
+- Goal: a personal "everything app" inside Obsidian — reminders and calendar —
+  that feels native and polished, not like a developer tool
