@@ -79,8 +79,7 @@ export class AlertManager {
     const events = await this.eventManager.getAll();
     console.log(`[Chronicle] Checking ${events.length} events`);
 
-    if (!(this.getSettings().notifEvents ?? true)) return;
-    for (const event of events) {
+    if (this.getSettings().notifEvents ?? true) for (const event of events) {
       if (!event.alert || event.alert === "none") continue;
       if (!event.startDate || !event.startTime)   continue;
 
@@ -102,7 +101,7 @@ export class AlertManager {
     const reminders = await this.reminderManager.getAll();
     console.log(`[Chronicle] Checking ${reminders.length} reminders`);
 
-    for (const reminder of reminders) {
+    if (this.getSettings().notifReminders ?? true) for (const reminder of reminders) {
       if (!reminder.alert || reminder.alert === "none")                          continue;
       if (!reminder.dueDate && !reminder.dueTime)                               continue;
       if (reminder.status === "done" || reminder.status === "cancelled")        continue;

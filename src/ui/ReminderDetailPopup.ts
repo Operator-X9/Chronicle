@@ -43,9 +43,11 @@ export class ReminderDetailPopup extends Modal {
     // ── Detail rows ──────────────────────────────────────────────────────
     const body = contentEl.createDiv("cdp-body");
 
-    if (r.dueDate) {
-      const timeStr = r.dueTime ? `  ·  ${this.fmtTime(r.dueTime)}` : "";
-      this.row(body, "Due", formatDate(r.dueDate) + timeStr);
+    if (r.dueDate || r.dueTime) {
+      const datePart = r.dueDate ? formatDate(r.dueDate) : "";
+      const timePart = r.dueTime ? this.fmtTime(r.dueTime) : "";
+      const display  = [datePart, timePart].filter(Boolean).join("  ·  ");
+      this.row(body, "Due", display);
     }
 
     if (r.location) this.row(body, "Location", r.location);

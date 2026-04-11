@@ -555,15 +555,14 @@ var AlertManager = class {
     console.log("[Chronicle] AlertManager stopped");
   }
   async check() {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const now = /* @__PURE__ */ new Date();
     const nowMs = now.getTime();
     const windowMs = 5 * 60 * 1e3;
     console.log(`[Chronicle] Alert check at ${now.toLocaleTimeString()}`);
     const events = await this.eventManager.getAll();
     console.log(`[Chronicle] Checking ${events.length} events`);
-    if (!((_a = this.getSettings().notifEvents) != null ? _a : true)) return;
-    for (const event of events) {
+    if ((_a = this.getSettings().notifEvents) != null ? _a : true) for (const event of events) {
       if (!event.alert || event.alert === "none") continue;
       if (!event.startDate || !event.startTime) continue;
       const alertKey = `event-${event.id}-${event.startDate}-${event.alert}`;
@@ -578,15 +577,15 @@ var AlertManager = class {
     }
     const reminders = await this.reminderManager.getAll();
     console.log(`[Chronicle] Checking ${reminders.length} reminders`);
-    for (const reminder of reminders) {
+    if ((_b = this.getSettings().notifReminders) != null ? _b : true) for (const reminder of reminders) {
       if (!reminder.alert || reminder.alert === "none") continue;
       if (!reminder.dueDate && !reminder.dueTime) continue;
       if (reminder.status === "done" || reminder.status === "cancelled") continue;
       const todayStr = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
-      const dateStr = (_b = reminder.dueDate) != null ? _b : todayStr;
+      const dateStr = (_c = reminder.dueDate) != null ? _c : todayStr;
       const alertKey = `reminder-${reminder.id}-${dateStr}-${reminder.alert}`;
       if (this.firedAlerts.has(alertKey)) continue;
-      const timeStr = (_c = reminder.dueTime) != null ? _c : "09:00";
+      const timeStr = (_d = reminder.dueTime) != null ? _d : "09:00";
       const dueMs = (/* @__PURE__ */ new Date(`${dateStr}T${timeStr}`)).getTime();
       const alertMs = dueMs - this.offsetToMs(reminder.alert);
       console.log(`[Chronicle] Reminder "${reminder.title}" date="${dateStr}" time="${timeStr}" alert="${reminder.alert}" fires at ${new Date(alertMs).toLocaleTimeString()} (${Math.round((alertMs - nowMs) / 1e3)}s)`);
@@ -1753,9 +1752,11 @@ var ReminderDetailPopup = class extends import_obsidian7.Modal {
       badgeRow.createSpan({ cls: `cdp-badge cdp-priority-${r.priority}` }).setText(formatPriority(r.priority));
     }
     const body = contentEl.createDiv("cdp-body");
-    if (r.dueDate) {
-      const timeStr = r.dueTime ? `  \xB7  ${this.fmtTime(r.dueTime)}` : "";
-      this.row(body, "Due", formatDate(r.dueDate) + timeStr);
+    if (r.dueDate || r.dueTime) {
+      const datePart = r.dueDate ? formatDate(r.dueDate) : "";
+      const timePart = r.dueTime ? this.fmtTime(r.dueTime) : "";
+      const display = [datePart, timePart].filter(Boolean).join("  \xB7  ");
+      this.row(body, "Due", display);
     }
     if (r.location) this.row(body, "Location", r.location);
     if (r.listId) {
