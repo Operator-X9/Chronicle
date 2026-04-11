@@ -284,7 +284,6 @@ Exports:
 
 ### Notification channels (all configurable in settings)
 1. **macOS native** — via `osascript` (most reliable, works in background)
-2. **Obsidian toast** — via `new Notice(...)`
 3. **Sound** — two-tone chime via Web Audio API (880Hz + 1108Hz)
 
 ### CalendarManager.colorToHex
@@ -451,7 +450,6 @@ individual views, modals, or settings files.
 
 ## The user / project owner
 
-- First-time plugin developer, learning as they go
 - On macOS, using VS Code
 - Has Node 24, npm 11, Git 2.50
 - GitHub: https://github.com/Operator-X9/Chronicle
