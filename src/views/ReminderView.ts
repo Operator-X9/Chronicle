@@ -89,17 +89,36 @@ export class ReminderView extends ItemView {
     // ── Smart list tiles ──────────────────────────────────────────────────
     const tilesGrid = sidebar.createDiv("chronicle-tiles");
 
-    const tiles = [
-      { id: "today",     label: "Today",     count: today.length + overdue.length, color: "#FF3B30", badge: overdue.length },
-      { id: "scheduled", label: "Scheduled", count: scheduled.length,              color: "#378ADD", badge: 0 },
-      { id: "all",       label: "All",       count: all.filter(r => r.status !== "done").length, color: "#636366", badge: 0 },
-      { id: "flagged",   label: "Flagged",   count: flagged.length,                color: "#FF9500", badge: 0 },
-    ];
+    const settings = this.plugin.settings;
+    const colors   = settings.smartListColors ?? {};
+    const allTiles: Record<string, { label: string; count: number; color: string; badge: number; visible: boolean }> = {
+      today:     { label: "Today",     count: today.length + overdue.length,                color: colors.today     ?? "#FF3B30", badge: overdue.length, visible: settings.showTodayList     ?? true },
+      scheduled: { label: "Scheduled", count: scheduled.length,                             color: colors.scheduled ?? "#378ADD", badge: 0,             visible: settings.showScheduledList  ?? true },
+      all:       { label: "All",       count: all.filter(r => r.status !== "done").length,  color: colors.all       ?? "#636366", badge: 0,             visible: settings.showAllList        ?? true },
+      flagged:   { label: "Flagged",   count: flagged.length,                               color: colors.flagged   ?? "#FF9500", badge: 0,             visible: settings.showFlaggedList    ?? true },
+      completed: { label: "Completed", count: all.filter(r => r.status === "done").length,  color: colors.completed ?? "#34C759", badge: 0,             visible: settings.showCompletedList  ?? true },
+    };
 
-    for (const tile of tiles) {
+    const order: string[] = settings.smartListOrder?.length
+      ? settings.smartListOrder
+      : ["today", "scheduled", "all", "flagged", "completed"];
+
+    // Ensure any IDs not in saved order are appended (future-proof)
+    for (const id of Object.keys(allTiles)) {
+      if (!order.includes(id)) order.push(id);
+    }
+
+    let dragSrcId: string | null = null;
+
+    for (const id of order) {
+      const tile = allTiles[id];
+      if (!tile || !tile.visible) continue;
+
       const t = tilesGrid.createDiv("chronicle-tile");
+      t.dataset.tileId = id;
+      t.draggable = true;
       t.style.backgroundColor = tile.color;
-      if (tile.id === this.currentListId) t.addClass("active");
+      if (id === this.currentListId) t.addClass("active");
 
       const topRow = t.createDiv("chronicle-tile-top");
       topRow.createDiv("chronicle-tile-count").setText(String(tile.count));
@@ -111,18 +130,47 @@ export class ReminderView extends ItemView {
       }
 
       t.createDiv("chronicle-tile-label").setText(tile.label);
-      t.addEventListener("click", () => { this.currentListId = tile.id; this.render(); });
+
+      t.addEventListener("click", () => { this.currentListId = id; this.render(); });
+
+      // ── Drag-and-drop ──────────────────────────────────────────────────
+      t.addEventListener("dragstart", (e) => {
+        dragSrcId = id;
+        t.addClass("chronicle-tile-dragging");
+        e.dataTransfer?.setData("text/plain", id);
+      });
+      t.addEventListener("dragend", () => {
+        t.removeClass("chronicle-tile-dragging");
+        tilesGrid.querySelectorAll(".chronicle-tile-drag-over").forEach(el => el.removeClass("chronicle-tile-drag-over"));
+      });
+      t.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (dragSrcId && dragSrcId !== id) {
+          tilesGrid.querySelectorAll(".chronicle-tile-drag-over").forEach(el => el.removeClass("chronicle-tile-drag-over"));
+          t.addClass("chronicle-tile-drag-over");
+        }
+      });
+      t.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        if (!dragSrcId || dragSrcId === id) return;
+        const newOrder = [...order];
+        const srcIdx  = newOrder.indexOf(dragSrcId);
+        const dstIdx  = newOrder.indexOf(id);
+        if (srcIdx !== -1 && dstIdx !== -1) {
+          newOrder.splice(srcIdx, 1);
+          newOrder.splice(dstIdx, 0, dragSrcId);
+          this.plugin.settings.smartListOrder = newOrder;
+          await this.plugin.saveSettings();
+          this.render();
+        }
+        dragSrcId = null;
+      });
     }
 
-    // ── Completed archive entry ───────────────────────────────────────────
-    const completedRow = sidebar.createDiv("chronicle-list-row");
-    if (this.currentListId === "completed") completedRow.addClass("active");
-    const completedIcon = completedRow.createDiv("chronicle-completed-icon");
-    completedIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-    completedRow.createDiv("chronicle-list-name").setText("Completed");
-    const completedCount = all.filter(r => r.status === "done").length;
-    if (completedCount > 0) completedRow.createDiv("chronicle-list-count").setText(String(completedCount));
-    completedRow.addEventListener("click", () => { this.currentListId = "completed"; this.render(); });
+    // If the currently selected list was hidden, fall back to first visible
+    if (allTiles[this.currentListId] && !allTiles[this.currentListId].visible) {
+      this.currentListId = order.find(id => allTiles[id]?.visible) ?? "today";
+    }
 
     // ── My Lists ──────────────────────────────────────────────────────────
     const listsSection = sidebar.createDiv("chronicle-lists-section");
@@ -168,7 +216,7 @@ export class ReminderView extends ItemView {
         flagged: "Flagged", completed: "Completed"
       };
       titleEl.setText(labels[this.currentListId]);
-      titleEl.style.color = smartColors[this.currentListId];
+      titleEl.style.color = "var(--text-normal)";
 
       switch (this.currentListId) {
         case "today":
@@ -190,7 +238,7 @@ export class ReminderView extends ItemView {
     } else {
       const list = this.listManager.getById(this.currentListId);
       titleEl.setText(list?.name ?? "List");
-      titleEl.style.color = list ? list.color : "var(--text-normal)";
+      titleEl.style.color = "var(--text-normal)";
       reminders = all.filter(r => r.listId === this.currentListId && r.status !== "done");
     }
 

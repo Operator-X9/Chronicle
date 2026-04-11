@@ -131,9 +131,17 @@ export interface ChronicleSettings {
   defaultCalendarView: "day" | "week" | "month" | "year";
 
   // Smart lists visibility
-  showTodayCount: boolean;
-  showScheduledCount: boolean;
-  showFlaggedCount: boolean;
+  showTodayList: boolean;
+  showScheduledList: boolean;
+  showAllList: boolean;
+  showFlaggedList: boolean;
+  showCompletedList: boolean;
+
+  // Smart list order (array of smart list IDs)
+  smartListOrder: string[];
+
+  // Smart list colors (keyed by smart list ID)
+  smartListColors: Record<string, string>;
 
   // Notification channels
   notifMacOS: boolean;
@@ -176,9 +184,19 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
   startOfWeek: 0,
   timeFormat: "12h",
   defaultCalendarView: "week",
-  showTodayCount: true,
-  showScheduledCount: true,
-  showFlaggedCount: true,
+  showTodayList: true,
+  showScheduledList: true,
+  showAllList: true,
+  showFlaggedList: true,
+  showCompletedList: true,
+  smartListOrder: ["today", "scheduled", "all", "flagged", "completed"],
+  smartListColors: {
+    today:     "#FF3B30",
+    scheduled: "#378ADD",
+    all:       "#636366",
+    flagged:   "#FF9500",
+    completed: "#34C759",
+  },
   notifMacOS: true,
   notifSound: true,
   notifEvents: true,

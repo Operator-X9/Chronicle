@@ -299,13 +299,10 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
   }
   renderCalendarRow(el, cal, isOnly) {
     const setting = new import_obsidian.Setting(el);
-    const dot = setting.nameEl.createDiv("cs-cal-dot");
-    dot.style.backgroundColor = CalendarManager.colorToHex(cal.color);
     setting.nameEl.createSpan({ text: cal.name });
     setting.addColorPicker((picker) => {
       picker.setValue(CalendarManager.colorToHex(cal.color));
       picker.onChange(async (hex) => {
-        dot.style.backgroundColor = hex;
         this.plugin.calendarManager.update(cal.id, { color: hex });
         await this.plugin.saveSettings();
       });
@@ -331,13 +328,10 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
   }
   renderListRow(el, list, isOnly) {
     const setting = new import_obsidian.Setting(el);
-    const dot = setting.nameEl.createDiv("cs-cal-dot");
-    dot.style.backgroundColor = list.color;
     setting.nameEl.createSpan({ text: list.name });
     setting.addColorPicker((picker) => {
       picker.setValue(list.color);
       picker.onChange(async (hex) => {
-        dot.style.backgroundColor = hex;
         this.plugin.listManager.update(list.id, { color: hex });
         await this.plugin.saveSettings();
       });
@@ -358,6 +352,7 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
   }
   // ── Reminders ─────────────────────────────────────────────────────────────
   renderReminders(el) {
+    var _a, _b;
     this.subHeader(el, "Reminder defaults");
     new import_obsidian.Setting(el).setName("Default status").addDropdown(
       (drop) => drop.addOption("todo", "To do").addOption("in-progress", "In progress").addOption("done", "Done").addOption("cancelled", "Cancelled").setValue(this.plugin.settings.defaultReminderStatus).onChange(async (value) => {
@@ -378,12 +373,12 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
       })
     );
     new import_obsidian.Setting(el).setName("Default list").setDesc("List assigned to new reminders by default.").addDropdown((drop) => {
-      var _a;
+      var _a2;
       drop.addOption("", "None");
       for (const list of this.plugin.listManager.getAll()) {
         drop.addOption(list.id, list.name);
       }
-      drop.setValue((_a = this.plugin.settings.defaultListId) != null ? _a : "");
+      drop.setValue((_a2 = this.plugin.settings.defaultListId) != null ? _a2 : "");
       drop.onChange(async (value) => {
         this.plugin.settings.defaultListId = value;
         await this.plugin.saveSettings();
@@ -420,8 +415,8 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
     this.subHeader(el, "Notifications");
     new import_obsidian.Setting(el).setName("Reminder notification sound").setDesc("macOS system sound played when a reminder alert fires.").addDropdown(
       (drop) => {
-        var _a;
-        return this.addSoundOptions(drop).setValue((_a = this.plugin.settings.notifSoundReminder) != null ? _a : "Glass").onChange(async (value) => {
+        var _a2;
+        return this.addSoundOptions(drop).setValue((_a2 = this.plugin.settings.notifSoundReminder) != null ? _a2 : "Glass").onChange(async (value) => {
           this.plugin.settings.notifSoundReminder = value;
           await this.plugin.saveSettings();
         });
@@ -429,24 +424,33 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
     );
     this.divider(el);
     this.subHeader(el, "Smart list visibility");
-    new import_obsidian.Setting(el).setName("Show Today count").addToggle(
-      (t) => t.setValue(this.plugin.settings.showTodayCount).onChange(async (value) => {
-        this.plugin.settings.showTodayCount = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(el).setName("Show Scheduled count").addToggle(
-      (t) => t.setValue(this.plugin.settings.showScheduledCount).onChange(async (value) => {
-        this.plugin.settings.showScheduledCount = value;
-        await this.plugin.saveSettings();
-      })
-    );
-    new import_obsidian.Setting(el).setName("Show Flagged count").addToggle(
-      (t) => t.setValue(this.plugin.settings.showFlaggedCount).onChange(async (value) => {
-        this.plugin.settings.showFlaggedCount = value;
-        await this.plugin.saveSettings();
-      })
-    );
+    const smartLists = [
+      { id: "today", label: "Today", showKey: "showTodayList", defaultColor: "#FF3B30" },
+      { id: "scheduled", label: "Scheduled", showKey: "showScheduledList", defaultColor: "#378ADD" },
+      { id: "all", label: "All", showKey: "showAllList", defaultColor: "#636366" },
+      { id: "completed", label: "Completed", showKey: "showCompletedList", defaultColor: "#34C759" }
+    ];
+    for (const sl of smartLists) {
+      const colors = (_a = this.plugin.settings.smartListColors) != null ? _a : {};
+      const currentColor = (_b = colors[sl.id]) != null ? _b : sl.defaultColor;
+      const setting = new import_obsidian.Setting(el).setName(sl.label);
+      setting.addColorPicker((picker) => {
+        picker.setValue(currentColor);
+        picker.onChange(async (hex) => {
+          if (!this.plugin.settings.smartListColors) this.plugin.settings.smartListColors = {};
+          this.plugin.settings.smartListColors[sl.id] = hex;
+          await this.plugin.saveSettings();
+        });
+      }).addToggle(
+        (t) => {
+          var _a2;
+          return t.setValue((_a2 = this.plugin.settings[sl.showKey]) != null ? _a2 : true).onChange(async (value) => {
+            this.plugin.settings[sl.showKey] = value;
+            await this.plugin.saveSettings();
+          });
+        }
+      );
+    }
   }
   // ── Appearance ────────────────────────────────────────────────────────────
   renderAppearance(el) {
@@ -702,9 +706,19 @@ var DEFAULT_SETTINGS = {
   startOfWeek: 0,
   timeFormat: "12h",
   defaultCalendarView: "week",
-  showTodayCount: true,
-  showScheduledCount: true,
-  showFlaggedCount: true,
+  showTodayList: true,
+  showScheduledList: true,
+  showAllList: true,
+  showFlaggedList: true,
+  showCompletedList: true,
+  smartListOrder: ["today", "scheduled", "all", "flagged", "completed"],
+  smartListColors: {
+    today: "#FF3B30",
+    scheduled: "#378ADD",
+    all: "#636366",
+    flagged: "#FF9500",
+    completed: "#34C759"
+  },
   notifMacOS: true,
   notifSound: true,
   notifEvents: true,
@@ -2099,6 +2113,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
     );
   }
   async render() {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
     const version = ++this._renderVersion;
     const container = this.containerEl.children[1];
     container.empty();
@@ -2119,16 +2134,28 @@ var ReminderView = class extends import_obsidian8.ItemView {
     });
     newReminderBtn.addEventListener("click", () => this.openReminderForm());
     const tilesGrid = sidebar.createDiv("chronicle-tiles");
-    const tiles = [
-      { id: "today", label: "Today", count: today.length + overdue.length, color: "#FF3B30", badge: overdue.length },
-      { id: "scheduled", label: "Scheduled", count: scheduled.length, color: "#378ADD", badge: 0 },
-      { id: "all", label: "All", count: all.filter((r) => r.status !== "done").length, color: "#636366", badge: 0 },
-      { id: "flagged", label: "Flagged", count: flagged.length, color: "#FF9500", badge: 0 }
-    ];
-    for (const tile of tiles) {
+    const settings = this.plugin.settings;
+    const colors = (_a = settings.smartListColors) != null ? _a : {};
+    const allTiles = {
+      today: { label: "Today", count: today.length + overdue.length, color: (_b = colors.today) != null ? _b : "#FF3B30", badge: overdue.length, visible: (_c = settings.showTodayList) != null ? _c : true },
+      scheduled: { label: "Scheduled", count: scheduled.length, color: (_d = colors.scheduled) != null ? _d : "#378ADD", badge: 0, visible: (_e = settings.showScheduledList) != null ? _e : true },
+      all: { label: "All", count: all.filter((r) => r.status !== "done").length, color: (_f = colors.all) != null ? _f : "#636366", badge: 0, visible: (_g = settings.showAllList) != null ? _g : true },
+      flagged: { label: "Flagged", count: flagged.length, color: (_h = colors.flagged) != null ? _h : "#FF9500", badge: 0, visible: (_i = settings.showFlaggedList) != null ? _i : true },
+      completed: { label: "Completed", count: all.filter((r) => r.status === "done").length, color: (_j = colors.completed) != null ? _j : "#34C759", badge: 0, visible: (_k = settings.showCompletedList) != null ? _k : true }
+    };
+    const order = ((_l = settings.smartListOrder) == null ? void 0 : _l.length) ? settings.smartListOrder : ["today", "scheduled", "all", "flagged", "completed"];
+    for (const id of Object.keys(allTiles)) {
+      if (!order.includes(id)) order.push(id);
+    }
+    let dragSrcId = null;
+    for (const id of order) {
+      const tile = allTiles[id];
+      if (!tile || !tile.visible) continue;
       const t = tilesGrid.createDiv("chronicle-tile");
+      t.dataset.tileId = id;
+      t.draggable = true;
       t.style.backgroundColor = tile.color;
-      if (tile.id === this.currentListId) t.addClass("active");
+      if (id === this.currentListId) t.addClass("active");
       const topRow = t.createDiv("chronicle-tile-top");
       topRow.createDiv("chronicle-tile-count").setText(String(tile.count));
       if (tile.badge > 0) {
@@ -2138,21 +2165,48 @@ var ReminderView = class extends import_obsidian8.ItemView {
       }
       t.createDiv("chronicle-tile-label").setText(tile.label);
       t.addEventListener("click", () => {
-        this.currentListId = tile.id;
+        this.currentListId = id;
         this.render();
       });
+      t.addEventListener("dragstart", (e) => {
+        var _a2;
+        dragSrcId = id;
+        t.addClass("chronicle-tile-dragging");
+        (_a2 = e.dataTransfer) == null ? void 0 : _a2.setData("text/plain", id);
+      });
+      t.addEventListener("dragend", () => {
+        t.removeClass("chronicle-tile-dragging");
+        tilesGrid.querySelectorAll(".chronicle-tile-drag-over").forEach((el) => el.removeClass("chronicle-tile-drag-over"));
+      });
+      t.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (dragSrcId && dragSrcId !== id) {
+          tilesGrid.querySelectorAll(".chronicle-tile-drag-over").forEach((el) => el.removeClass("chronicle-tile-drag-over"));
+          t.addClass("chronicle-tile-drag-over");
+        }
+      });
+      t.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        if (!dragSrcId || dragSrcId === id) return;
+        const newOrder = [...order];
+        const srcIdx = newOrder.indexOf(dragSrcId);
+        const dstIdx = newOrder.indexOf(id);
+        if (srcIdx !== -1 && dstIdx !== -1) {
+          newOrder.splice(srcIdx, 1);
+          newOrder.splice(dstIdx, 0, dragSrcId);
+          this.plugin.settings.smartListOrder = newOrder;
+          await this.plugin.saveSettings();
+          this.render();
+        }
+        dragSrcId = null;
+      });
     }
-    const completedRow = sidebar.createDiv("chronicle-list-row");
-    if (this.currentListId === "completed") completedRow.addClass("active");
-    const completedIcon = completedRow.createDiv("chronicle-completed-icon");
-    completedIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-    completedRow.createDiv("chronicle-list-name").setText("Completed");
-    const completedCount = all.filter((r) => r.status === "done").length;
-    if (completedCount > 0) completedRow.createDiv("chronicle-list-count").setText(String(completedCount));
-    completedRow.addEventListener("click", () => {
-      this.currentListId = "completed";
-      this.render();
-    });
+    if (allTiles[this.currentListId] && !allTiles[this.currentListId].visible) {
+      this.currentListId = (_m = order.find((id) => {
+        var _a2;
+        return (_a2 = allTiles[id]) == null ? void 0 : _a2.visible;
+      })) != null ? _m : "today";
+    }
     const listsSection = sidebar.createDiv("chronicle-lists-section");
     listsSection.createDiv("chronicle-section-label").setText("My Lists");
     for (const list of lists) {
@@ -2191,7 +2245,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
         completed: "Completed"
       };
       titleEl.setText(labels[this.currentListId]);
-      titleEl.style.color = smartColors[this.currentListId];
+      titleEl.style.color = "var(--text-normal)";
       switch (this.currentListId) {
         case "today":
           reminders = [...overdue, ...await this.reminderManager.getDueToday()];
@@ -2212,7 +2266,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
     } else {
       const list = this.listManager.getById(this.currentListId);
       titleEl.setText((_a = list == null ? void 0 : list.name) != null ? _a : "List");
-      titleEl.style.color = list ? list.color : "var(--text-normal)";
+      titleEl.style.color = "var(--text-normal)";
       reminders = all.filter((r) => r.listId === this.currentListId && r.status !== "done");
     }
     const isCompleted = this.currentListId === "completed";

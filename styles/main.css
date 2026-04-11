@@ -10,11 +10,13 @@
   grid-template-columns: 220px 1fr;
   height: 100%;
   overflow: hidden;
+  background: var(--background-secondary);
+  gap: 0 0;
+  padding: 8px 8px 8px 0;
 }
 
 .chronicle-sidebar {
   background: var(--background-secondary);
-  border-right: 1px solid var(--background-modifier-border);
   padding: 16px 12px;
   overflow-y: auto;
   display: flex;
@@ -27,6 +29,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--background-primary);
+  border-radius: var(--radius-m);
 }
 
 /* ── Smart list tiles ────────────────────────────────────────────────────── */
@@ -47,6 +50,8 @@
 .chronicle-tile:hover  { opacity: 0.88; }
 .chronicle-tile:active { transform: scale(0.96); }
 .chronicle-tile.active { outline: 2.5px solid var(--background-primary); outline-offset: -1px; }
+.chronicle-tile-dragging    { opacity: 0.45; cursor: grabbing; }
+.chronicle-tile-drag-over   { outline: 2px dashed rgba(255,255,255,0.6); outline-offset: -2px; }
 
 .chronicle-tile-top {
   display: flex;
@@ -776,11 +781,12 @@
   grid-template-columns: 220px 1fr;
   height: 100%;
   overflow: hidden;
+  background: var(--background-secondary);
+  padding: 8px 8px 8px 0;
 }
 
 .chronicle-cal-sidebar {
   background: var(--background-secondary);
-  border-right: 1px solid var(--background-modifier-border);
   padding: 16px 12px;
   overflow-y: auto;
   display: flex;
@@ -793,6 +799,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--background-primary);
+  border-radius: var(--radius-m);
 }
 
 /* ── Mini calendar ────────────────────────────────────────────────────── */

@@ -287,9 +287,6 @@ export class ChronicleSettingsTab extends PluginSettingTab {
   private renderCalendarRow(el: HTMLElement, cal: ChronicleCalendar, isOnly: boolean) {
     const setting = new Setting(el);
 
-    // Color dot preview
-    const dot = setting.nameEl.createDiv("cs-cal-dot");
-    dot.style.backgroundColor = CalendarManager.colorToHex(cal.color);
     setting.nameEl.createSpan({ text: cal.name });
 
     setting
@@ -297,7 +294,6 @@ export class ChronicleSettingsTab extends PluginSettingTab {
         // Convert named colors to hex for the picker
         picker.setValue(CalendarManager.colorToHex(cal.color));
         picker.onChange(async (hex) => {
-          dot.style.backgroundColor = hex;
           this.plugin.calendarManager.update(cal.id, { color: hex });
           await this.plugin.saveSettings();
         });
@@ -335,15 +331,12 @@ export class ChronicleSettingsTab extends PluginSettingTab {
   private renderListRow(el: HTMLElement, list: ChronicleList, isOnly: boolean) {
     const setting = new Setting(el);
 
-    const dot = setting.nameEl.createDiv("cs-cal-dot");
-    dot.style.backgroundColor = list.color;
     setting.nameEl.createSpan({ text: list.name });
 
     setting
       .addColorPicker(picker => {
         picker.setValue(list.color);
         picker.onChange(async (hex) => {
-          dot.style.backgroundColor = hex;
           this.plugin.listManager.update(list.id, { color: hex });
           await this.plugin.saveSettings();
         });
@@ -476,35 +469,37 @@ export class ChronicleSettingsTab extends PluginSettingTab {
     this.divider(el);
     this.subHeader(el, "Smart list visibility");
 
-    new Setting(el)
-      .setName("Show Today count")
-      .addToggle(t => t
-        .setValue(this.plugin.settings.showTodayCount)
-        .onChange(async (value) => {
-          this.plugin.settings.showTodayCount = value;
-          await this.plugin.saveSettings();
-        })
-      );
+    type SmartListEntry = { id: string; label: string; showKey: "showTodayList" | "showScheduledList" | "showAllList" | "showCompletedList"; defaultColor: string };
+    const smartLists: SmartListEntry[] = [
+      { id: "today",     label: "Today",     showKey: "showTodayList",     defaultColor: "#FF3B30" },
+      { id: "scheduled", label: "Scheduled", showKey: "showScheduledList", defaultColor: "#378ADD" },
+      { id: "all",       label: "All",       showKey: "showAllList",       defaultColor: "#636366" },
+      { id: "completed", label: "Completed", showKey: "showCompletedList", defaultColor: "#34C759" },
+    ];
 
-    new Setting(el)
-      .setName("Show Scheduled count")
-      .addToggle(t => t
-        .setValue(this.plugin.settings.showScheduledCount)
-        .onChange(async (value) => {
-          this.plugin.settings.showScheduledCount = value;
-          await this.plugin.saveSettings();
-        })
-      );
+    for (const sl of smartLists) {
+      const colors = this.plugin.settings.smartListColors ?? {};
+      const currentColor = colors[sl.id] ?? sl.defaultColor;
 
-    new Setting(el)
-      .setName("Show Flagged count")
-      .addToggle(t => t
-        .setValue(this.plugin.settings.showFlaggedCount)
-        .onChange(async (value) => {
-          this.plugin.settings.showFlaggedCount = value;
-          await this.plugin.saveSettings();
+      const setting = new Setting(el).setName(sl.label);
+
+      setting
+        .addColorPicker(picker => {
+          picker.setValue(currentColor);
+          picker.onChange(async (hex) => {
+            if (!this.plugin.settings.smartListColors) this.plugin.settings.smartListColors = {};
+            this.plugin.settings.smartListColors[sl.id] = hex;
+            await this.plugin.saveSettings();
+          });
         })
-      );
+        .addToggle(t => t
+          .setValue(this.plugin.settings[sl.showKey] ?? true)
+          .onChange(async (value) => {
+            this.plugin.settings[sl.showKey] = value;
+            await this.plugin.saveSettings();
+          })
+        );
+    }
   }
 
   // ── Appearance ────────────────────────────────────────────────────────────
