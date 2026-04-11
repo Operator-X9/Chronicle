@@ -142,6 +142,10 @@ export interface ChronicleSettings {
   notifEvents: boolean;
   notifReminders: boolean;
 
+  // Notification sounds (macOS sound names, e.g. "Glass", "Ping", "none")
+  notifSoundEvent: string;
+  notifSoundReminder: string;
+
   // Events
   defaultEventDuration: number;
 
@@ -181,6 +185,8 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
   notifSound: true,
   notifEvents: true,
   notifReminders: true,
+  notifSoundEvent: "Glass",
+  notifSoundReminder: "Glass",
   defaultEventDuration: 60,
   density: "comfortable",
   showCompletedCount: true,

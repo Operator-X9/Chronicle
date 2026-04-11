@@ -237,6 +237,17 @@ export class ChronicleSettingsTab extends PluginSettingTab {
         })
       );
 
+    new Setting(el)
+      .setName("Event notification sound")
+      .setDesc("macOS system sound played when an event alert fires.")
+      .addDropdown(drop => this.addSoundOptions(drop)
+        .setValue(this.plugin.settings.notifSoundEvent ?? "Glass")
+        .onChange(async (value) => {
+          this.plugin.settings.notifSoundEvent = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
     this.divider(el);
     this.subHeader(el, "My Calendars");
     el.createDiv("cs-desc").setText("Add, rename, recolor, or delete calendars.");
@@ -444,6 +455,20 @@ export class ChronicleSettingsTab extends PluginSettingTab {
     });
 
     this.divider(el);
+    this.subHeader(el, "Notifications");
+
+    new Setting(el)
+      .setName("Reminder notification sound")
+      .setDesc("macOS system sound played when a reminder alert fires.")
+      .addDropdown(drop => this.addSoundOptions(drop)
+        .setValue(this.plugin.settings.notifSoundReminder ?? "Glass")
+        .onChange(async (value: string) => {
+          this.plugin.settings.notifSoundReminder = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    this.divider(el);
     this.subHeader(el, "Smart list visibility");
 
     new Setting(el)
@@ -526,6 +551,25 @@ export class ChronicleSettingsTab extends PluginSettingTab {
 
   private divider(el: HTMLElement) {
     el.createDiv("cs-divider");
+  }
+
+  private addSoundOptions(drop: any) {
+    return drop
+      .addOption("none",      "None (silent)")
+      .addOption("Glass",     "Glass")
+      .addOption("Ping",      "Ping")
+      .addOption("Tink",      "Tink")
+      .addOption("Basso",     "Basso")
+      .addOption("Funk",      "Funk")
+      .addOption("Hero",      "Hero")
+      .addOption("Sosumi",    "Sosumi")
+      .addOption("Submarine", "Submarine")
+      .addOption("Blow",      "Blow")
+      .addOption("Bottle",    "Bottle")
+      .addOption("Frog",      "Frog")
+      .addOption("Morse",     "Morse")
+      .addOption("Pop",       "Pop")
+      .addOption("Purr",      "Purr");
   }
 
   private addAlertOptions(drop: any) {

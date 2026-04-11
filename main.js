@@ -258,6 +258,15 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       })
     );
+    new import_obsidian.Setting(el).setName("Event notification sound").setDesc("macOS system sound played when an event alert fires.").addDropdown(
+      (drop) => {
+        var _a;
+        return this.addSoundOptions(drop).setValue((_a = this.plugin.settings.notifSoundEvent) != null ? _a : "Glass").onChange(async (value) => {
+          this.plugin.settings.notifSoundEvent = value;
+          await this.plugin.saveSettings();
+        });
+      }
+    );
     this.divider(el);
     this.subHeader(el, "My Calendars");
     el.createDiv("cs-desc").setText("Add, rename, recolor, or delete calendars.");
@@ -406,6 +415,17 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
       this.display();
     });
     this.divider(el);
+    this.subHeader(el, "Notifications");
+    new import_obsidian.Setting(el).setName("Reminder notification sound").setDesc("macOS system sound played when a reminder alert fires.").addDropdown(
+      (drop) => {
+        var _a;
+        return this.addSoundOptions(drop).setValue((_a = this.plugin.settings.notifSoundReminder) != null ? _a : "Glass").onChange(async (value) => {
+          this.plugin.settings.notifSoundReminder = value;
+          await this.plugin.saveSettings();
+        });
+      }
+    );
+    this.divider(el);
     this.subHeader(el, "Smart list visibility");
     new import_obsidian.Setting(el).setName("Show Today count").addToggle(
       (t) => t.setValue(this.plugin.settings.showTodayCount).onChange(async (value) => {
@@ -464,6 +484,9 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
   divider(el) {
     el.createDiv("cs-divider");
   }
+  addSoundOptions(drop) {
+    return drop.addOption("none", "None (silent)").addOption("Glass", "Glass").addOption("Ping", "Ping").addOption("Tink", "Tink").addOption("Basso", "Basso").addOption("Funk", "Funk").addOption("Hero", "Hero").addOption("Sosumi", "Sosumi").addOption("Submarine", "Submarine").addOption("Blow", "Blow").addOption("Bottle", "Bottle").addOption("Frog", "Frog").addOption("Morse", "Morse").addOption("Pop", "Pop").addOption("Purr", "Purr");
+  }
   addAlertOptions(drop) {
     return drop.addOption("none", "None").addOption("at-time", "At time").addOption("5min", "5 minutes before").addOption("10min", "10 minutes before").addOption("15min", "15 minutes before").addOption("30min", "30 minutes before").addOption("1hour", "1 hour before").addOption("2hours", "2 hours before").addOption("1day", "1 day before").addOption("2days", "2 days before").addOption("1week", "1 week before");
   }
@@ -475,7 +498,6 @@ var AlertManager = class {
   constructor(app, reminderManager, eventManager, getSettings) {
     this.intervalId = null;
     this.firedAlerts = /* @__PURE__ */ new Set();
-    this.audioCtx = null;
     // Store handler references so we can remove them in stop()
     this.onChanged = null;
     this.onCreate = null;
@@ -564,7 +586,7 @@ var AlertManager = class {
     }
   }
   fire(key, title, body, type) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e;
     this.firedAlerts.add(key);
     const settings = this.getSettings();
     const doMacOS = (_a = settings.notifMacOS) != null ? _a : true;
@@ -572,13 +594,15 @@ var AlertManager = class {
     const doSound = (_c = settings.notifSound) != null ? _c : true;
     const icon = type === "event" ? "\u{1F5D3}" : "\u2713";
     if (doMacOS) {
+      const soundName = doSound ? type === "event" ? (_d = settings.notifSoundEvent) != null ? _d : "Glass" : (_e = settings.notifSoundReminder) != null ? _e : "Glass" : "";
       let notifSent = false;
       try {
         const { exec } = window.require("child_process");
         const t = `Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`;
         const b = `${title} \u2014 ${body}`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        const soundClause = soundName ? ` sound name "${soundName}"` : "";
         exec(
-          `osascript -e 'display notification "${b}" with title "${t}" sound name "Glass"'`,
+          `osascript -e 'display notification "${b}" with title "${t}"${soundClause}'`,
           (err) => {
             if (err) console.log("[Chronicle] osascript failed:", err.message);
             else console.log("[Chronicle] osascript notification sent");
@@ -601,32 +625,10 @@ ${body}`
           console.log("[Chronicle] ipcRenderer failed:", err);
         }
       }
-      if (doObsidian) {
-        new import_obsidian2.Notice(`${icon} ${title}
-${body}`, 8e3);
-      }
-      if (doSound) {
-        this.playSound();
-      }
     }
-  }
-  playSound() {
-    try {
-      if (!this.audioCtx) this.audioCtx = new AudioContext();
-      const ctx = this.audioCtx;
-      const gain = ctx.createGain();
-      gain.connect(ctx.destination);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(1e-3, ctx.currentTime + 0.6);
-      for (const [freq, delay] of [[880, 0], [1108, 0.15]]) {
-        const osc = ctx.createOscillator();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-        osc.connect(gain);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + 0.5);
-      }
-    } catch (e) {
+    if (doObsidian) {
+      new import_obsidian2.Notice(`${icon} ${title}
+${body}`, 8e3);
     }
   }
   offsetToMs(offset) {
@@ -714,6 +716,8 @@ var DEFAULT_SETTINGS = {
   notifSound: true,
   notifEvents: true,
   notifReminders: true,
+  notifSoundEvent: "Glass",
+  notifSoundReminder: "Glass",
   defaultEventDuration: 60,
   density: "comfortable",
   showCompletedCount: true,
@@ -1498,7 +1502,7 @@ ${body}`;
         alert: (_h = fm.alert) != null ? _h : "none",
         tags: (_i = fm["tags"]) != null ? _i : [],
         linkedNotes: (_j = fm["linked-notes"]) != null ? _j : [],
-        linkedReminderIds: (_l = (_k = fm["linked-reminder-ids"]) != null ? _k : fm["linked-task-ids"]) != null ? _l : [],
+        linkedReminderIds: (_l = (_k = fm["linked-reminder-ids"]) != null ? _k : fm["linked-reminder-ids"]) != null ? _l : [],
         completedInstances: (_m = fm["completed-instances"]) != null ? _m : [],
         createdAt: (_n = fm["created-at"]) != null ? _n : (/* @__PURE__ */ new Date()).toISOString(),
         notes

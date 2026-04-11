@@ -10,7 +10,6 @@ export class AlertManager {
   private eventManager:     EventManager;
   private intervalId:       number | null = null;
   private firedAlerts:      Set<string>   = new Set();
-  private audioCtx:         AudioContext | null = null;
 
   // Store handler references so we can remove them in stop()
   private onChanged: ((file: TFile) => void) | null = null;
@@ -128,75 +127,54 @@ export class AlertManager {
 
   public fire(key: string, title: string, body: string, type: "event" | "reminder") {
     this.firedAlerts.add(key);
-    const settings = this.getSettings();
+    const settings   = this.getSettings();
     const doMacOS    = settings.notifMacOS    ?? true;
     const doObsidian = settings.notifObsidian ?? true;
     const doSound    = settings.notifSound    ?? true;
-    const icon = type === "event" ? "🗓" : "✓";
+    const icon       = type === "event" ? "🗓" : "✓";
 
-    // Native macOS notification — try multiple approaches
+    // ── macOS native notification ──────────────────────────────────────────
     if (doMacOS) {
-    let notifSent = false;
+      const soundName = doSound
+        ? (type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass"))
+        : "";
 
-    // Approach 1: osascript (most reliable on macOS regardless of Electron version)
-    try {
-      const { exec } = (window as any).require("child_process");
-      const t = `Chronicle — ${type === "event" ? "Event" : "Reminder"}`;
-      const b = `${title} — ${body}`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-      exec(`osascript -e 'display notification "${b}" with title "${t}" sound name "Glass"'`,
-        (err: any) => {
-          if (err) console.log("[Chronicle] osascript failed:", err.message);
-          else console.log("[Chronicle] osascript notification sent");
-        }
-      );
-      notifSent = true;
-    } catch (err) {
-      console.log("[Chronicle] osascript unavailable:", err);
-    }
-
-    // Approach 2: Electron ipcRenderer → main process (fallback)
-    if (!notifSent) {
+      let notifSent = false;
       try {
-        const { ipcRenderer } = (window as any).require("electron");
-        ipcRenderer.send("show-notification", {
-          title: `Chronicle — ${type === "event" ? "Event" : "Reminder"}`,
-          body:  `${title}\n${body}`,
-        });
-        console.log("[Chronicle] ipcRenderer notification sent");
+        const { exec } = (window as any).require("child_process");
+        const t = `Chronicle — ${type === "event" ? "Event" : "Reminder"}`;
+        const b = `${title} — ${body}`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        const soundClause = soundName ? ` sound name "${soundName}"` : "";
+        exec(`osascript -e 'display notification "${b}" with title "${t}"${soundClause}'`,
+          (err: any) => {
+            if (err) console.log("[Chronicle] osascript failed:", err.message);
+            else     console.log("[Chronicle] osascript notification sent");
+          }
+        );
+        notifSent = true;
       } catch (err) {
-        console.log("[Chronicle] ipcRenderer failed:", err);
+        console.log("[Chronicle] osascript unavailable:", err);
+      }
+
+      // Fallback: Electron ipcRenderer
+      if (!notifSent) {
+        try {
+          const { ipcRenderer } = (window as any).require("electron");
+          ipcRenderer.send("show-notification", {
+            title: `Chronicle — ${type === "event" ? "Event" : "Reminder"}`,
+            body:  `${title}\n${body}`,
+          });
+          console.log("[Chronicle] ipcRenderer notification sent");
+        } catch (err) {
+          console.log("[Chronicle] ipcRenderer failed:", err);
+        }
       }
     }
 
-    // In-app toast
+    // ── In-app toast (independent of macOS toggle) ─────────────────────────
     if (doObsidian) {
       new Notice(`${icon} ${title}\n${body}`, 8000);
     }
-
-    // Sound
-    if (doSound) {
-      this.playSound();
-    }
-    }
-  }
-
-  private playSound() {
-    try {
-      if (!this.audioCtx) this.audioCtx = new AudioContext();
-      const ctx  = this.audioCtx;
-      const gain = ctx.createGain();
-      gain.connect(ctx.destination);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-      for (const [freq, delay] of [[880, 0], [1108, 0.15]] as [number, number][]) {
-        const osc = ctx.createOscillator();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-        osc.connect(gain);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + 0.5);
-      }
-    } catch { /* silent fail */ }
   }
 
   private offsetToMs(offset: AlertOffset): number {
