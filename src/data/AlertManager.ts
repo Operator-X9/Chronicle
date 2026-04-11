@@ -1,4 +1,4 @@
-import { App, Notice, TFile } from "obsidian";
+import { App, Notice } from "obsidian";
 import { ReminderManager } from "./ReminderManager";
 import { EventManager } from "./EventManager";
 import { AlertOffset } from "../types";
@@ -12,7 +12,7 @@ export class AlertManager {
   private firedAlerts:      Set<string>   = new Set();
 
   // Store handler references so we can remove them in stop()
-  private onChanged: ((file: TFile) => void) | null = null;
+  private onChanged: ((file: any) => void) | null = null;
   private onCreate:  ((file: any)   => void) | null = null;
 
   constructor(app: App, reminderManager: ReminderManager, eventManager: EventManager, getSettings: () => import("../types").ChronicleSettings) {
@@ -36,7 +36,7 @@ export class AlertManager {
     }, 3000);
 
     // Re-check when files change — store refs so we can remove them
-    this.onChanged = (file: TFile) => {
+    this.onChanged = (file: any) => {
       const inEvents    = file.path.startsWith(this.eventManager["eventsFolder"]);
       const inReminders = file.path.startsWith(this.reminderManager["remindersFolder"]);
       if (inEvents || inReminders) setTimeout(() => this.check(), 300);
@@ -138,7 +138,6 @@ export class AlertManager {
       const rawSound  = type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass");
       const soundName = (doSound && rawSound !== "none") ? rawSound : "";
 
-      let notifSent = false;
       try {
         const { exec } = (window as any).require("child_process");
         const t = `Chronicle — ${type === "event" ? "Event" : "Reminder"}`;
@@ -150,23 +149,8 @@ export class AlertManager {
             else     console.log("[Chronicle] osascript notification sent");
           }
         );
-        notifSent = true;
       } catch (err) {
         console.log("[Chronicle] osascript unavailable:", err);
-      }
-
-      // Fallback: Electron ipcRenderer
-      if (!notifSent) {
-        try {
-          const { ipcRenderer } = (window as any).require("electron");
-          ipcRenderer.send("show-notification", {
-            title: `Chronicle — ${type === "event" ? "Event" : "Reminder"}`,
-            body:  `${title}\n${body}`,
-          });
-          console.log("[Chronicle] ipcRenderer notification sent");
-        } catch (err) {
-          console.log("[Chronicle] ipcRenderer failed:", err);
-        }
       }
     }
 

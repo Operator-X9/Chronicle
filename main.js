@@ -607,7 +607,6 @@ var AlertManager = class {
     if (doMacOS) {
       const rawSound = type === "event" ? (_d = settings.notifSoundEvent) != null ? _d : "Glass" : (_e = settings.notifSoundReminder) != null ? _e : "Glass";
       const soundName = doSound && rawSound !== "none" ? rawSound : "";
-      let notifSent = false;
       try {
         const { exec } = window.require("child_process");
         const t = `Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`;
@@ -620,22 +619,8 @@ var AlertManager = class {
             else console.log("[Chronicle] osascript notification sent");
           }
         );
-        notifSent = true;
       } catch (err) {
         console.log("[Chronicle] osascript unavailable:", err);
-      }
-      if (!notifSent) {
-        try {
-          const { ipcRenderer } = window.require("electron");
-          ipcRenderer.send("show-notification", {
-            title: `Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`,
-            body: `${title}
-${body}`
-          });
-          console.log("[Chronicle] ipcRenderer notification sent");
-        } catch (err) {
-          console.log("[Chronicle] ipcRenderer failed:", err);
-        }
       }
     }
     if (doObsidian) {
