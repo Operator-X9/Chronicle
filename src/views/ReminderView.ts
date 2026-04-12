@@ -16,6 +16,7 @@ export class ReminderView extends ItemView {
   private plugin: ChroniclePlugin;
   private currentListId: string = "today";
   private _renderVersion = 0;
+  private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -33,31 +34,37 @@ export class ReminderView extends ItemView {
   getDisplayText(): string { return "Reminders"; }
   getIcon(): string { return "check-circle"; }
 
+  private debouncedRender(delay = 300) {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => { this._debounceTimer = null; this.render(); }, delay);
+  }
+
   async onOpen() {
     await this.render();
 
+    const isRelevant = (path: string) => path.startsWith(this.reminderManager["remindersFolder"]);
+
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
-        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
-          this.render();
-        }
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
     this.registerEvent(
-      (this.app.workspace as any).on("chronicle:settings-changed", () => this.render())
+      (this.app.workspace as any).on("chronicle:settings-changed", () => this.debouncedRender(100))
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
-          setTimeout(() => this.render(), 200);
-        }
+        if (isRelevant(file.path)) this.debouncedRender(400);
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
-        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
-          this.render();
-        }
+        if (isRelevant(file.path)) this.debouncedRender();
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
   }
@@ -71,7 +78,6 @@ export class ReminderView extends ItemView {
     const all       = await this.reminderManager.getAll();
     const today     = await this.reminderManager.getDueToday();
     const scheduled = await this.reminderManager.getScheduled();
-    const flagged   = await this.reminderManager.getFlagged();
     const overdue   = await this.reminderManager.getOverdue();
     const lists     = this.listManager.getAll();
 
@@ -96,13 +102,13 @@ export class ReminderView extends ItemView {
       today:     { label: "Today",     count: today.length + overdue.length,                color: colors.today     ?? "#FF3B30", badge: overdue.length, visible: settings.showTodayList     ?? true },
       scheduled: { label: "Scheduled", count: scheduled.length,                             color: colors.scheduled ?? "#378ADD", badge: 0,             visible: settings.showScheduledList  ?? true },
       all:       { label: "All",       count: all.filter(r => r.status !== "done").length,  color: colors.all       ?? "#636366", badge: 0,             visible: settings.showAllList        ?? true },
-      flagged:   { label: "Flagged",   count: flagged.length,                               color: colors.flagged   ?? "#FF9500", badge: 0,             visible: settings.showFlaggedList    ?? true },
+
       completed: { label: "Completed", count: all.filter(r => r.status === "done").length,  color: colors.completed ?? "#34C759", badge: 0,             visible: settings.showCompletedList  ?? true },
     };
 
     const order: string[] = settings.smartListOrder?.length
       ? settings.smartListOrder
-      : ["today", "scheduled", "all", "flagged", "completed"];
+      : ["today", "scheduled", "all", "completed"];
 
     // Ensure any IDs not in saved order are appended (future-proof)
     for (const id of Object.keys(allTiles)) {
@@ -206,10 +212,10 @@ export class ReminderView extends ItemView {
 
     let reminders: ChronicleReminder[] = [];
 
-    const SMART_LIST_IDS = ["today", "scheduled", "all", "flagged", "completed"];
+    const SMART_LIST_IDS = ["today", "scheduled", "all", "completed"];
     const SMART_LABELS: Record<string, string> = {
       today: "Today", scheduled: "Scheduled", all: "All",
-      flagged: "Flagged", completed: "Completed",
+      completed: "Completed",
     };
 
     if (SMART_LIST_IDS.includes(this.currentListId)) {
@@ -222,9 +228,6 @@ export class ReminderView extends ItemView {
           break;
         case "scheduled":
           reminders = await this.reminderManager.getScheduled();
-          break;
-        case "flagged":
-          reminders = await this.reminderManager.getFlagged();
           break;
         case "all":
           reminders = all.filter(r => r.status !== "done");

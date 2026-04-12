@@ -131,7 +131,7 @@ export interface ChronicleSettings {
   showTodayList: boolean;
   showScheduledList: boolean;
   showAllList: boolean;
-  showFlaggedList: boolean;
+
   showCompletedList: boolean;
 
   // Smart list order (array of smart list IDs)
@@ -151,6 +151,7 @@ export interface ChronicleSettings {
   notifSoundReminder: string;
 
   // Events
+  defaultAllDay: boolean;
   defaultEventDuration: number;
 
   // Appearance
@@ -184,14 +185,14 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
   showTodayList: true,
   showScheduledList: true,
   showAllList: true,
-  showFlaggedList: true,
+
   showCompletedList: true,
-  smartListOrder: ["today", "scheduled", "all", "flagged", "completed"],
+  smartListOrder: ["today", "scheduled", "all", "completed"],
   smartListColors: {
     today:     "#FF3B30",
     scheduled: "#378ADD",
     all:       "#636366",
-    flagged:   "#FF9500",
+
     completed: "#34C759",
   },
   notifMacOS: true,
@@ -200,6 +201,7 @@ export const DEFAULT_SETTINGS: ChronicleSettings = {
   notifReminders: true,
   notifSoundEvent: "Glass",
   notifSoundReminder: "Glass",
+  defaultAllDay: false,
   defaultEventDuration: 60,
   density: "comfortable",
   showCompletedCount: true,

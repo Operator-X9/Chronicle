@@ -296,6 +296,15 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
+    new import_obsidian.Setting(el).setName("Default all day").setDesc("New events default to all-day when enabled.").addToggle(
+      (t) => {
+        var _a;
+        return t.setValue((_a = this.plugin.settings.defaultAllDay) != null ? _a : false).onChange(async (value) => {
+          this.plugin.settings.defaultAllDay = value;
+          await this.plugin.saveSettings();
+        });
+      }
+    );
     new import_obsidian.Setting(el).setName("Default event duration").setDesc("How long new events last by default (minutes).").addSlider(
       (slider) => {
         var _a;
@@ -749,14 +758,12 @@ var DEFAULT_SETTINGS = {
   showTodayList: true,
   showScheduledList: true,
   showAllList: true,
-  showFlaggedList: true,
   showCompletedList: true,
-  smartListOrder: ["today", "scheduled", "all", "flagged", "completed"],
+  smartListOrder: ["today", "scheduled", "all", "completed"],
   smartListColors: {
     today: "#FF3B30",
     scheduled: "#378ADD",
     all: "#636366",
-    flagged: "#FF9500",
     completed: "#34C759"
   },
   notifMacOS: true,
@@ -765,6 +772,7 @@ var DEFAULT_SETTINGS = {
   notifReminders: true,
   notifSoundEvent: "Glass",
   notifSoundReminder: "Glass",
+  defaultAllDay: false,
   defaultEventDuration: 60,
   density: "comfortable",
   showCompletedCount: true,
@@ -867,7 +875,7 @@ function buildTagField(app, wrapper, initial) {
 // src/views/EventFormView.ts
 var EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
 var EventFormView = class extends import_obsidian2.ItemView {
-  constructor(leaf, eventManager, calendarManager, reminderManager, editingEvent, onSave) {
+  constructor(leaf, eventManager, calendarManager, reminderManager, editingEvent, onSave, defaultAllDay) {
     super(leaf);
     this.editingEvent = null;
     this.eventManager = eventManager;
@@ -875,6 +883,7 @@ var EventFormView = class extends import_obsidian2.ItemView {
     this.reminderManager = reminderManager;
     this.editingEvent = editingEvent != null ? editingEvent : null;
     this.onSave = onSave;
+    this.defaultAllDay = defaultAllDay != null ? defaultAllDay : false;
   }
   getViewType() {
     return EVENT_FORM_VIEW_TYPE;
@@ -921,7 +930,7 @@ var EventFormView = class extends import_obsidian2.ItemView {
     locationInput.value = (_c = e == null ? void 0 : e.location) != null ? _c : "";
     const allDayWrap = this.field(form, "All day").createDiv("cem-toggle-wrap");
     const allDayToggle = allDayWrap.createEl("input", { type: "checkbox", cls: "cem-toggle" });
-    allDayToggle.checked = (_d = e == null ? void 0 : e.allDay) != null ? _d : false;
+    allDayToggle.checked = (_d = e == null ? void 0 : e.allDay) != null ? _d : this.defaultAllDay;
     const allDayLabel = allDayWrap.createSpan({ cls: "cem-toggle-label" });
     allDayLabel.setText(allDayToggle.checked ? "Yes" : "No");
     allDayToggle.addEventListener("change", () => {
@@ -1260,10 +1269,6 @@ var ReminderManager = class {
     return all.filter(
       (r) => r.status !== "done" && r.status !== "cancelled" && !!r.dueDate
     );
-  }
-  async getFlagged() {
-    const all = await this.getAll();
-    return all.filter((r) => r.priority === "high" && r.status !== "done");
   }
   // ── Serialisation ───────────────────────────────────────────────────────────
   reminderToMarkdown(reminder) {
@@ -2055,6 +2060,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
     super(leaf);
     this.currentListId = "today";
     this._renderVersion = 0;
+    this._debounceTimer = null;
     this.reminderManager = reminderManager;
     this.listManager = listManager;
     this.plugin = plugin;
@@ -2068,35 +2074,42 @@ var ReminderView = class extends import_obsidian8.ItemView {
   getIcon() {
     return "check-circle";
   }
+  debouncedRender(delay = 300) {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      this.render();
+    }, delay);
+  }
   async onOpen() {
     await this.render();
+    const isRelevant = (path) => path.startsWith(this.reminderManager["remindersFolder"]);
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
-        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
-          this.render();
-        }
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
     this.registerEvent(
-      this.app.workspace.on("chronicle:settings-changed", () => this.render())
+      this.app.workspace.on("chronicle:settings-changed", () => this.debouncedRender(100))
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
-          setTimeout(() => this.render(), 200);
-        }
+        if (isRelevant(file.path)) this.debouncedRender(400);
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
-        if (file.path.startsWith(this.reminderManager["remindersFolder"])) {
-          this.render();
-        }
+        if (isRelevant(file.path)) this.debouncedRender();
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
   }
   async render() {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     const version = ++this._renderVersion;
     const container = this.containerEl.children[1];
     container.empty();
@@ -2104,7 +2117,6 @@ var ReminderView = class extends import_obsidian8.ItemView {
     const all = await this.reminderManager.getAll();
     const today = await this.reminderManager.getDueToday();
     const scheduled = await this.reminderManager.getScheduled();
-    const flagged = await this.reminderManager.getFlagged();
     const overdue = await this.reminderManager.getOverdue();
     const lists = this.listManager.getAll();
     if (this._renderVersion !== version) return;
@@ -2123,10 +2135,9 @@ var ReminderView = class extends import_obsidian8.ItemView {
       today: { label: "Today", count: today.length + overdue.length, color: (_b = colors.today) != null ? _b : "#FF3B30", badge: overdue.length, visible: (_c = settings.showTodayList) != null ? _c : true },
       scheduled: { label: "Scheduled", count: scheduled.length, color: (_d = colors.scheduled) != null ? _d : "#378ADD", badge: 0, visible: (_e = settings.showScheduledList) != null ? _e : true },
       all: { label: "All", count: all.filter((r) => r.status !== "done").length, color: (_f = colors.all) != null ? _f : "#636366", badge: 0, visible: (_g = settings.showAllList) != null ? _g : true },
-      flagged: { label: "Flagged", count: flagged.length, color: (_h = colors.flagged) != null ? _h : "#FF9500", badge: 0, visible: (_i = settings.showFlaggedList) != null ? _i : true },
-      completed: { label: "Completed", count: all.filter((r) => r.status === "done").length, color: (_j = colors.completed) != null ? _j : "#34C759", badge: 0, visible: (_k = settings.showCompletedList) != null ? _k : true }
+      completed: { label: "Completed", count: all.filter((r) => r.status === "done").length, color: (_h = colors.completed) != null ? _h : "#34C759", badge: 0, visible: (_i = settings.showCompletedList) != null ? _i : true }
     };
-    const order = ((_l = settings.smartListOrder) == null ? void 0 : _l.length) ? settings.smartListOrder : ["today", "scheduled", "all", "flagged", "completed"];
+    const order = ((_j = settings.smartListOrder) == null ? void 0 : _j.length) ? settings.smartListOrder : ["today", "scheduled", "all", "completed"];
     for (const id of Object.keys(allTiles)) {
       if (!order.includes(id)) order.push(id);
     }
@@ -2185,10 +2196,10 @@ var ReminderView = class extends import_obsidian8.ItemView {
       });
     }
     if (allTiles[this.currentListId] && !allTiles[this.currentListId].visible) {
-      this.currentListId = (_m = order.find((id) => {
+      this.currentListId = (_k = order.find((id) => {
         var _a2;
         return (_a2 = allTiles[id]) == null ? void 0 : _a2.visible;
-      })) != null ? _m : "today";
+      })) != null ? _k : "today";
     }
     const listsSection = sidebar.createDiv("chronicle-lists-section");
     listsSection.createDiv("chronicle-section-label").setText("My Lists");
@@ -2212,12 +2223,11 @@ var ReminderView = class extends import_obsidian8.ItemView {
     const header = main.createDiv("chronicle-main-header");
     const titleEl = header.createDiv("chronicle-main-title");
     let reminders = [];
-    const SMART_LIST_IDS = ["today", "scheduled", "all", "flagged", "completed"];
+    const SMART_LIST_IDS = ["today", "scheduled", "all", "completed"];
     const SMART_LABELS = {
       today: "Today",
       scheduled: "Scheduled",
       all: "All",
-      flagged: "Flagged",
       completed: "Completed"
     };
     if (SMART_LIST_IDS.includes(this.currentListId)) {
@@ -2229,9 +2239,6 @@ var ReminderView = class extends import_obsidian8.ItemView {
           break;
         case "scheduled":
           reminders = await this.reminderManager.getScheduled();
-          break;
-        case "flagged":
-          reminders = await this.reminderManager.getFlagged();
           break;
         case "all":
           reminders = all.filter((r) => r.status !== "done");
@@ -2466,7 +2473,7 @@ var import_obsidian11 = require("obsidian");
 // src/ui/EventModal.ts
 var import_obsidian9 = require("obsidian");
 var EventModal = class extends import_obsidian9.Modal {
-  constructor(app, eventManager, calendarManager, reminderManager, editingEvent, onSave, onExpand) {
+  constructor(app, eventManager, calendarManager, reminderManager, editingEvent, onSave, onExpand, defaultAllDay) {
     super(app);
     this.eventManager = eventManager;
     this.calendarManager = calendarManager;
@@ -2474,6 +2481,7 @@ var EventModal = class extends import_obsidian9.Modal {
     this.editingEvent = editingEvent != null ? editingEvent : null;
     this.onSave = onSave;
     this.onExpand = onExpand;
+    this.defaultAllDay = defaultAllDay != null ? defaultAllDay : false;
   }
   async onOpen() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i;
@@ -2511,7 +2519,7 @@ var EventModal = class extends import_obsidian9.Modal {
     const allDayField = this.field(form, "All day");
     const allDayWrap = allDayField.createDiv("cem-toggle-wrap");
     const allDayToggle = allDayWrap.createEl("input", { type: "checkbox", cls: "cem-toggle" });
-    allDayToggle.checked = (_d = e == null ? void 0 : e.allDay) != null ? _d : false;
+    allDayToggle.checked = (_d = e == null ? void 0 : e.allDay) != null ? _d : this.defaultAllDay;
     const allDayLabel = allDayWrap.createSpan({ cls: "cem-toggle-label" });
     allDayLabel.setText(allDayToggle.checked ? "Yes" : "No");
     allDayToggle.addEventListener("change", () => {
@@ -2805,6 +2813,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
     this.mode = "week";
     this._modeSet = false;
     this._renderVersion = 0;
+    this._debounceTimer = null;
     this.eventManager = eventManager;
     this.reminderManager = reminderManager;
     this.calendarManager = calendarManager;
@@ -2819,30 +2828,37 @@ var CalendarView = class extends import_obsidian11.ItemView {
   getIcon() {
     return "calendar";
   }
+  debouncedRender(delay = 300) {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      this.render();
+    }, delay);
+  }
   async onOpen() {
     await this.render();
+    const isRelevant = (path) => path.startsWith(this.eventManager["eventsFolder"]) || path.startsWith(this.reminderManager["remindersFolder"]);
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
-        const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks = file.path.startsWith(this.reminderManager["remindersFolder"]);
-        if (inEvents || inTasks) this.render();
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
     this.registerEvent(
-      this.app.workspace.on("chronicle:settings-changed", () => this.render())
+      this.app.workspace.on("chronicle:settings-changed", () => this.debouncedRender(100))
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks = file.path.startsWith(this.reminderManager["remindersFolder"]);
-        if (inEvents || inTasks) setTimeout(() => this.render(), 200);
+        if (isRelevant(file.path)) this.debouncedRender(400);
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
-        const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks = file.path.startsWith(this.reminderManager["remindersFolder"]);
-        if (inEvents || inTasks) this.render();
+        if (isRelevant(file.path)) this.debouncedRender();
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
   }
@@ -2921,7 +2937,8 @@ var CalendarView = class extends import_obsidian11.ItemView {
         this.reminderManager,
         void 0,
         () => this.render(),
-        (e) => this.openEventFullPage(e)
+        (e) => this.openEventFullPage(e),
+        this.plugin.settings.defaultAllDay
       ).open();
     });
     this.renderMiniCalendar(sidebar);
@@ -3065,6 +3082,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
   }
   // ── Month view ────────────────────────────────────────────────────────────
   renderMonthView(main, events, reminders) {
+    var _a;
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
     const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
@@ -3083,13 +3101,19 @@ var CalendarView = class extends import_obsidian11.ItemView {
       const cell = grid.createDiv("chronicle-month-cell");
       if (dateStr === todayStr2) cell.addClass("today");
       cell.createDiv("chronicle-month-cell-num").setText(String(d));
-      cell.addEventListener("dblclick", () => this.openNewEventModal(dateStr, true));
+      cell.addEventListener("dblclick", () => this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay));
       cell.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, true);
+        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay);
       });
-      events.filter((e) => e.startDate === dateStr && this.isCalendarVisible(e.calendarId)).slice(0, 3).forEach((event) => {
-        var _a;
+      const dayEvents = events.filter((e) => e.startDate === dateStr && this.isCalendarVisible(e.calendarId));
+      const dayReminders = reminders.filter((t) => t.dueDate === dateStr && t.status !== "done");
+      const totalItems = dayEvents.length + dayReminders.length;
+      const maxVisible = 3;
+      let rendered = 0;
+      for (const event of dayEvents) {
+        if (rendered >= maxVisible) break;
+        rendered++;
         const cal = this.calendarManager.getById((_a = event.calendarId) != null ? _a : "");
         const color = cal ? CalendarManager.colorToHex(cal.color) : "#378ADD";
         const pill = cell.createDiv("chronicle-month-event-pill");
@@ -3101,12 +3125,24 @@ var CalendarView = class extends import_obsidian11.ItemView {
           e.stopPropagation();
           new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
         });
-      });
-      reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").slice(0, 2).forEach((task) => {
+      }
+      for (const task of dayReminders) {
+        if (rendered >= maxVisible) break;
+        rendered++;
         const pill = cell.createDiv("chronicle-month-event-pill");
         pill.addClass("chronicle-task-pill");
         pill.setText("\u2713 " + task.title);
-      });
+      }
+      if (totalItems > maxVisible) {
+        const more = cell.createDiv("chronicle-month-more");
+        more.setText(`+${totalItems - maxVisible} more`);
+        more.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.currentDate = new Date(year, month, d);
+          this.mode = "day";
+          this.render();
+        });
+      }
     }
     const remaining = 7 - (firstDay + daysInMonth) % 7;
     if (remaining < 7)
@@ -3125,27 +3161,46 @@ var CalendarView = class extends import_obsidian11.ItemView {
     });
     const todayStr2 = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
     const calGrid = main.createDiv("chronicle-week-grid");
-    const timeCol = calGrid.createDiv("chronicle-time-col");
-    timeCol.createDiv("chronicle-time-col-header");
-    const shelfSpacer = timeCol.createDiv("chronicle-time-col-shelf-spacer");
-    shelfSpacer.setText("all-day");
-    for (let h = 0; h < 24; h++)
-      timeCol.createDiv("chronicle-time-slot").setText(formatHour12(h));
-    for (const day of days) {
+    const timeColHeader = calGrid.createDiv("chronicle-time-col-header");
+    timeColHeader.style.gridColumn = "1";
+    timeColHeader.style.gridRow = "1";
+    for (let i = 0; i < 7; i++) {
+      const day = days[i];
       const dateStr = day.toISOString().split("T")[0];
-      const col = calGrid.createDiv("chronicle-day-col");
-      const allDayEvents = events.filter((e) => e.startDate === dateStr && e.allDay && this.isCalendarVisible(e.calendarId));
-      const dayHeader = col.createDiv("chronicle-day-header");
+      const dayHeader = calGrid.createDiv("chronicle-day-header");
+      dayHeader.style.gridColumn = String(i + 2);
+      dayHeader.style.gridRow = "1";
       dayHeader.createDiv("chronicle-day-name").setText(
         day.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()
       );
       const dayNum = dayHeader.createDiv("chronicle-day-num");
       dayNum.setText(String(day.getDate()));
       if (dateStr === todayStr2) dayNum.addClass("today");
-      const shelf = col.createDiv("chronicle-week-allday-shelf");
-      for (const event of allDayEvents)
-        this.renderEventPillAllDay(shelf, event);
-      const timeGrid = col.createDiv("chronicle-day-time-grid");
+    }
+    const shelfSpacer = calGrid.createDiv("chronicle-time-col-shelf-spacer");
+    shelfSpacer.style.gridColumn = "1";
+    shelfSpacer.style.gridRow = "2";
+    shelfSpacer.setText("all-day");
+    for (let i = 0; i < 7; i++) {
+      const day = days[i];
+      const dateStr = day.toISOString().split("T")[0];
+      const allDayEvts = events.filter((e) => e.startDate === dateStr && e.allDay && this.isCalendarVisible(e.calendarId));
+      const shelf = calGrid.createDiv("chronicle-week-allday-shelf");
+      shelf.style.gridColumn = String(i + 2);
+      shelf.style.gridRow = "2";
+      for (const event of allDayEvts) this.renderEventPillAllDay(shelf, event);
+    }
+    const timeScroll = calGrid.createDiv("chronicle-week-time-scroll");
+    timeScroll.style.gridColumn = "1 / -1";
+    timeScroll.style.gridRow = "3";
+    const timeInner = timeScroll.createDiv("chronicle-week-time-inner");
+    const timeCol = timeInner.createDiv("chronicle-time-col-hours");
+    for (let h = 0; h < 24; h++)
+      timeCol.createDiv("chronicle-time-slot").setText(formatHour12(h));
+    for (let i = 0; i < 7; i++) {
+      const day = days[i];
+      const dateStr = day.toISOString().split("T")[0];
+      const timeGrid = timeInner.createDiv("chronicle-day-time-grid");
       timeGrid.style.height = `${24 * HOUR_HEIGHT}px`;
       for (let h = 0; h < 24; h++) {
         const line = timeGrid.createDiv("chronicle-hour-line");
@@ -3156,7 +3211,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
         const y = e.clientY - rect.top;
         const hour = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
         const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
-        this.openNewEventModal(dateStr, false, hour, minute);
+        this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
       timeGrid.addEventListener("contextmenu", (e) => {
         e.preventDefault();
@@ -3164,7 +3219,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
         const y = e.clientY - rect.top;
         const hour = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
         const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, false, hour, minute);
+        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
       events.filter((e) => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId)).forEach((event) => this.renderEventPillTimed(timeGrid, event));
       reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
@@ -3182,9 +3237,8 @@ var CalendarView = class extends import_obsidian11.ItemView {
     const nowStr = now.toISOString().split("T")[0];
     const todayColIdx = days.findIndex((d) => d.toISOString().split("T")[0] === nowStr);
     if (todayColIdx >= 0) {
-      const cols = calGrid.querySelectorAll(".chronicle-day-col");
-      const todayCol = cols[todayColIdx];
-      const tg = todayCol.querySelector(".chronicle-day-time-grid");
+      const timeGrids = timeInner.querySelectorAll(".chronicle-day-time-grid");
+      const tg = timeGrids[todayColIdx];
       if (tg) {
         const top = (now.getHours() + now.getMinutes() / 60) * HOUR_HEIGHT;
         const line = tg.createDiv("chronicle-now-line");
@@ -3224,7 +3278,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
       const y = e.clientY - rect.top;
       const hour = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
       const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
-      this.openNewEventModal(dateStr, false, hour, minute);
+      this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
     eventCol.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -3232,7 +3286,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
       const y = e.clientY - rect.top;
       const hour = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
       const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
-      this.showCalContextMenu(e.clientX, e.clientY, dateStr, false, hour, minute);
+      this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
     events.filter((e) => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId)).forEach((event) => this.renderEventPillTimed(eventCol, event));
     reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
@@ -3402,7 +3456,7 @@ var ChroniclePlugin = class extends import_obsidian12.Plugin {
     );
     this.registerView(
       EVENT_FORM_VIEW_TYPE,
-      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.reminderManager)
+      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.reminderManager, void 0, void 0, this.settings.defaultAllDay)
     );
     this.addRibbonIcon("check-circle", "Chronicle Reminders", () => this.activateReminderView());
     this.addRibbonIcon("calendar", "Chronicle Calendar", () => this.activateCalendarView());
@@ -3465,7 +3519,8 @@ var ChroniclePlugin = class extends import_obsidian12.Plugin {
       this.reminderManager,
       event,
       void 0,
-      (e) => this.openEventFullPage(e)
+      (e) => this.openEventFullPage(e),
+      this.settings.defaultAllDay
     ).open();
   }
   onunload() {

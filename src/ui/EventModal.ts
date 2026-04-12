@@ -13,6 +13,7 @@ export class EventModal extends Modal {
   private editingEvent: ChronicleEvent | null;
   private onSave?: () => void;
   private onExpand?: (event?: ChronicleEvent) => void;
+  private defaultAllDay: boolean;
 
   constructor(
     app: App,
@@ -21,7 +22,8 @@ export class EventModal extends Modal {
     reminderManager: ReminderManager,
     editingEvent?: ChronicleEvent,
     onSave?: () => void,
-    onExpand?: (event?: ChronicleEvent) => void
+    onExpand?: (event?: ChronicleEvent) => void,
+    defaultAllDay?: boolean
   ) {
     super(app);
     this.eventManager    = eventManager;
@@ -30,6 +32,7 @@ export class EventModal extends Modal {
     this.editingEvent    = editingEvent ?? null;
     this.onSave          = onSave;
     this.onExpand        = onExpand;
+    this.defaultAllDay   = defaultAllDay ?? false;
   }
 
   async onOpen() {
@@ -76,7 +79,7 @@ export class EventModal extends Modal {
     const allDayField  = this.field(form, "All day");
     const allDayWrap   = allDayField.createDiv("cem-toggle-wrap");
     const allDayToggle = allDayWrap.createEl("input", { type: "checkbox", cls: "cem-toggle" });
-    allDayToggle.checked = e?.allDay ?? false;
+    allDayToggle.checked = e?.allDay ?? this.defaultAllDay;
     const allDayLabel  = allDayWrap.createSpan({ cls: "cem-toggle-label" });
     allDayLabel.setText(allDayToggle.checked ? "Yes" : "No");
     allDayToggle.addEventListener("change", () => {

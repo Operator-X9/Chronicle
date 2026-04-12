@@ -919,53 +919,50 @@
 .chronicle-week-grid {
   display: grid;
   grid-template-columns: 52px repeat(7, 1fr);
+  grid-template-rows: auto auto 1fr;
   flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Row 3 scroll wrapper — spans all 8 columns, scrolls only the time area */
+.chronicle-week-time-scroll {
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
 }
 
-.chronicle-time-col {
-  border-right: 1px solid var(--background-modifier-border);
-  position: sticky;
-  left: 0;
-  background: var(--background-primary);
-  z-index: 2;
+/* Inner grid mirrors the outer column layout */
+.chronicle-week-time-inner {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
 }
 
+/* ── Row 1: time-col header + day headers (sticky) ───── */
 .chronicle-time-col-header {
+  grid-row: 1;
   height: 52px;
   border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.chronicle-time-slot {
-  height: 56px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 4px 8px 0 0;
-  font-size: 10px;
-  color: var(--text-faint);
-  border-bottom: 1px solid var(--background-modifier-border);
-  box-sizing: border-box;
-}
-
-.chronicle-day-col {
   border-right: 1px solid var(--background-modifier-border);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+  background: var(--background-primary);
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
-
-.chronicle-day-col:last-child { border-right: none; }
 
 .chronicle-day-header {
+  grid-row: 1;
   height: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid var(--background-modifier-border);
-  flex-shrink: 0;
+  border-right: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  position: sticky;
+  top: 0;
+  z-index: 3;
   gap: 1px;
 }
 
@@ -1006,7 +1003,27 @@
 
 .chronicle-day-time-grid {
   position: relative;
-  flex: 1;
+  border-right: 1px solid var(--background-modifier-border);
+}
+
+.chronicle-time-slot {
+  height: 56px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 4px 8px 0 0;
+  font-size: 10px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--background-modifier-border);
+  box-sizing: border-box;
+}
+
+.chronicle-time-col-hours {
+  border-right: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  position: sticky;
+  left: 0;
+  z-index: 2;
 }
 
 .chronicle-hour-line {
@@ -1173,6 +1190,20 @@
 
 .chronicle-month-event-pill:hover { opacity: 0.82; }
 
+.chronicle-month-more {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 1px 5px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.chronicle-month-more:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
 .chronicle-task-pill {
   background-color: color-mix(in srgb, var(--color-red) 13%, transparent);
   border-left: 3px solid var(--color-red);
@@ -1251,24 +1282,25 @@
   position: relative;
 }
 
-/* ── All-day shelf — week view ─────────────────────────────────────────── */
+/* ── All-day shelf — week view (grid row 2) ────────────────────────────── */
 .chronicle-week-allday-shelf {
+  grid-row: 2;
   border-bottom: 1px solid var(--background-modifier-border);
-  border-top: 1px solid var(--background-modifier-border);
+  border-right: 1px solid var(--background-modifier-border);
   min-height: 28px;
   padding: 3px 4px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   background: var(--background-primary);
-  flex-shrink: 0;
 }
 
-/* ── All-day shelf spacer in time column ─────────────────────────────── */
+/* ── All-day shelf spacer in time column (grid row 2) ───────────────── */
 .chronicle-time-col-shelf-spacer {
+  grid-row: 2;
   min-height: 28px;
   border-bottom: 1px solid var(--background-modifier-border);
-  border-top: 1px solid var(--background-modifier-border);
+  border-right: 1px solid var(--background-modifier-border);
   font-size: 10px;
   color: var(--text-faint);
   font-weight: 500;
@@ -1276,6 +1308,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 6px;
+  background: var(--background-primary);
 }
 
 /* ── All-day shelf — day view ──────────────────────────────────────────── */
@@ -1390,14 +1423,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.chronicle-week-grid {
-  display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 /* ── Completed archive ────────────────────────────────────────────────── */

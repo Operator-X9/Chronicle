@@ -94,11 +94,6 @@ export class ReminderManager {
     );
   }
 
-  async getFlagged(): Promise<ChronicleReminder[]> {
-    const all = await this.getAll();
-    return all.filter((r) => r.priority === "high" && r.status !== "done");
-  }
-
   // ── Serialisation ───────────────────────────────────────────────────────────
 
   private reminderToMarkdown(reminder: ChronicleReminder): string {

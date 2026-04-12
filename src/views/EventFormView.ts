@@ -13,6 +13,7 @@ export class EventFormView extends ItemView {
   private calendarManager: CalendarManager;
   private reminderManager: ReminderManager;
   private editingEvent: ChronicleEvent | null = null;
+  private defaultAllDay: boolean;
   onSave?: () => void;
 
   constructor(
@@ -21,7 +22,8 @@ export class EventFormView extends ItemView {
     calendarManager: CalendarManager,
     reminderManager: ReminderManager,
     editingEvent?: ChronicleEvent,
-    onSave?: () => void
+    onSave?: () => void,
+    defaultAllDay?: boolean
   ) {
     super(leaf);
     this.eventManager    = eventManager;
@@ -29,6 +31,7 @@ export class EventFormView extends ItemView {
     this.reminderManager = reminderManager;
     this.editingEvent    = editingEvent ?? null;
     this.onSave          = onSave;
+    this.defaultAllDay   = defaultAllDay ?? false;
   }
 
   getViewType():    string { return EVENT_FORM_VIEW_TYPE; }
@@ -79,7 +82,7 @@ export class EventFormView extends ItemView {
     // All day toggle
     const allDayWrap   = this.field(form, "All day").createDiv("cem-toggle-wrap");
     const allDayToggle = allDayWrap.createEl("input", { type: "checkbox", cls: "cem-toggle" });
-    allDayToggle.checked = e?.allDay ?? false;
+    allDayToggle.checked = e?.allDay ?? this.defaultAllDay;
     const allDayLabel  = allDayWrap.createSpan({ cls: "cem-toggle-label" });
     allDayLabel.setText(allDayToggle.checked ? "Yes" : "No");
     allDayToggle.addEventListener("change", () => {

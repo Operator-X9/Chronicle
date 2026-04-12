@@ -220,6 +220,17 @@ export class ChronicleSettingsTab extends PluginSettingTab {
       });
 
     new Setting(el)
+      .setName("Default all day")
+      .setDesc("New events default to all-day when enabled.")
+      .addToggle(t => t
+        .setValue(this.plugin.settings.defaultAllDay ?? false)
+        .onChange(async (value) => {
+          this.plugin.settings.defaultAllDay = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(el)
       .setName("Default event duration")
       .setDesc("How long new events last by default (minutes).")
       .addSlider(slider => slider

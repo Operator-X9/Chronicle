@@ -22,6 +22,7 @@ export class CalendarView extends ItemView {
   private mode:        CalendarMode = "week";
   private _modeSet                  = false;
   private _renderVersion            = 0;
+  private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -41,33 +42,39 @@ export class CalendarView extends ItemView {
   getDisplayText(): string { return "Calendar"; }
   getIcon():        string { return "calendar"; }
 
+  private debouncedRender(delay = 300) {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => { this._debounceTimer = null; this.render(); }, delay);
+  }
+
   async onOpen() {
     await this.render();
 
-    // Same permanent fix as task dashboard — metadataCache fires after
-    // frontmatter is fully parsed, so data is fresh when we re-render
+    const isRelevant = (path: string) =>
+      path.startsWith(this.eventManager["eventsFolder"]) ||
+      path.startsWith(this.reminderManager["remindersFolder"]);
+
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
-        const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks  = file.path.startsWith(this.reminderManager["remindersFolder"]);
-        if (inEvents || inTasks) this.render();
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
     this.registerEvent(
-      (this.app.workspace as any).on("chronicle:settings-changed", () => this.render())
+      (this.app.workspace as any).on("chronicle:settings-changed", () => this.debouncedRender(100))
     );
     this.registerEvent(
       this.app.vault.on("create", (file) => {
-        const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks  = file.path.startsWith(this.reminderManager["remindersFolder"]);
-        if (inEvents || inTasks) setTimeout(() => this.render(), 200);
+        if (isRelevant(file.path)) this.debouncedRender(400);
       })
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
-        const inEvents = file.path.startsWith(this.eventManager["eventsFolder"]);
-        const inTasks  = file.path.startsWith(this.reminderManager["remindersFolder"]);
-        if (inEvents || inTasks) this.render();
+        if (isRelevant(file.path)) this.debouncedRender();
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        if (isRelevant(file.path)) this.debouncedRender();
       })
     );
   }
@@ -156,7 +163,8 @@ private getRangeStart(): string {
     newEventBtn.addEventListener("click", () => {
       new EventModal(
         this.app, this.eventManager, this.calendarManager, this.reminderManager,
-        undefined, () => this.render(), (e) => this.openEventFullPage(e)
+        undefined, () => this.render(), (e) => this.openEventFullPage(e),
+        this.plugin.settings.defaultAllDay
       ).open();
     });
 
@@ -339,33 +347,52 @@ private getRangeStart(): string {
       if (dateStr === todayStr) cell.addClass("today");
       cell.createDiv("chronicle-month-cell-num").setText(String(d));
 
-      cell.addEventListener("dblclick", () => this.openNewEventModal(dateStr, true));
+      cell.addEventListener("dblclick", () => this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay));
       cell.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, true);
+        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay);
       });
 
-      events.filter(e => e.startDate === dateStr && this.isCalendarVisible(e.calendarId)).slice(0,3)
-        .forEach(event => {
-          const cal   = this.calendarManager.getById(event.calendarId ?? "");
-          const color = cal ? CalendarManager.colorToHex(cal.color) : "#378ADD";
-          const pill  = cell.createDiv("chronicle-month-event-pill");
-          pill.style.backgroundColor = color + "33";
-          pill.style.borderLeft      = `3px solid ${color}`;
-          pill.style.color           = color;
-          pill.setText(event.title);
-          pill.addEventListener("click", (e) => {
-            e.stopPropagation();
-            new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
-          });
-        });
+      const dayEvents   = events.filter(e => e.startDate === dateStr && this.isCalendarVisible(e.calendarId));
+      const dayReminders = reminders.filter(t => t.dueDate === dateStr && t.status !== "done");
+      const totalItems   = dayEvents.length + dayReminders.length;
+      const maxVisible   = 3;
+      let rendered       = 0;
 
-      reminders.filter(t => t.dueDate === dateStr && t.status !== "done").slice(0,2)
-        .forEach(task => {
-          const pill = cell.createDiv("chronicle-month-event-pill");
-          pill.addClass("chronicle-task-pill");
-          pill.setText("✓ " + task.title);
+      for (const event of dayEvents) {
+        if (rendered >= maxVisible) break;
+        rendered++;
+        const cal   = this.calendarManager.getById(event.calendarId ?? "");
+        const color = cal ? CalendarManager.colorToHex(cal.color) : "#378ADD";
+        const pill  = cell.createDiv("chronicle-month-event-pill");
+        pill.style.backgroundColor = color + "33";
+        pill.style.borderLeft      = `3px solid ${color}`;
+        pill.style.color           = color;
+        pill.setText(event.title);
+        pill.addEventListener("click", (e) => {
+          e.stopPropagation();
+          new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
         });
+      }
+
+      for (const task of dayReminders) {
+        if (rendered >= maxVisible) break;
+        rendered++;
+        const pill = cell.createDiv("chronicle-month-event-pill");
+        pill.addClass("chronicle-task-pill");
+        pill.setText("✓ " + task.title);
+      }
+
+      if (totalItems > maxVisible) {
+        const more = cell.createDiv("chronicle-month-more");
+        more.setText(`+${totalItems - maxVisible} more`);
+        more.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.currentDate = new Date(year, month, d);
+          this.mode = "day";
+          this.render();
+        });
+      }
     }
 
     const remaining = 7 - ((firstDay + daysInMonth) % 7);
@@ -385,44 +412,62 @@ private getRangeStart(): string {
     });
     const todayStr = new Date().toISOString().split("T")[0];
 
-    // The week grid: time-col + 7 day-cols
-    // Each day-col contains: header → all-day shelf → time grid
-    // This mirrors day view exactly — shelf is always below the date header
+    // Flat grid layout: 8 columns × 3 row bands (header, shelf, time-grid).
+    // All shelves share the same grid row, so they expand together.
     const calGrid = main.createDiv("chronicle-week-grid");
 
-    // Time column
-    const timeCol = calGrid.createDiv("chronicle-time-col");
-    // Blank cell that aligns with the day header row
-    timeCol.createDiv("chronicle-time-col-header");
-    // Blank cell that aligns with the all-day shelf row
-    const shelfSpacer = timeCol.createDiv("chronicle-time-col-shelf-spacer");
-    shelfSpacer.setText("all-day");
-    // Hour labels
-    for (let h = 0; h < 24; h++)
-      timeCol.createDiv("chronicle-time-slot").setText(formatHour12(h));
+    // Row 1 — time-col header + day headers
+    const timeColHeader = calGrid.createDiv("chronicle-time-col-header");
+    timeColHeader.style.gridColumn = "1";
+    timeColHeader.style.gridRow    = "1";
 
-    // Day columns
-    for (const day of days) {
-      const dateStr      = day.toISOString().split("T")[0];
-      const col          = calGrid.createDiv("chronicle-day-col");
-      const allDayEvents = events.filter(e => e.startDate === dateStr && e.allDay && this.isCalendarVisible(e.calendarId));
-
-      // 1. Day header
-      const dayHeader = col.createDiv("chronicle-day-header");
+    for (let i = 0; i < 7; i++) {
+      const day     = days[i];
+      const dateStr = day.toISOString().split("T")[0];
+      const dayHeader = calGrid.createDiv("chronicle-day-header");
+      dayHeader.style.gridColumn = String(i + 2);
+      dayHeader.style.gridRow    = "1";
       dayHeader.createDiv("chronicle-day-name").setText(
         day.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()
       );
       const dayNum = dayHeader.createDiv("chronicle-day-num");
       dayNum.setText(String(day.getDate()));
       if (dateStr === todayStr) dayNum.addClass("today");
+    }
 
-      // 2. All-day shelf — sits directly below header, same as day view
-      const shelf = col.createDiv("chronicle-week-allday-shelf");
-      for (const event of allDayEvents)
-        this.renderEventPillAllDay(shelf, event);
+    // Row 2 — shelf spacer + all-day shelves
+    const shelfSpacer = calGrid.createDiv("chronicle-time-col-shelf-spacer");
+    shelfSpacer.style.gridColumn = "1";
+    shelfSpacer.style.gridRow    = "2";
+    shelfSpacer.setText("all-day");
 
-      // 3. Time grid
-      const timeGrid = col.createDiv("chronicle-day-time-grid");
+    for (let i = 0; i < 7; i++) {
+      const day        = days[i];
+      const dateStr    = day.toISOString().split("T")[0];
+      const allDayEvts = events.filter(e => e.startDate === dateStr && e.allDay && this.isCalendarVisible(e.calendarId));
+
+      const shelf = calGrid.createDiv("chronicle-week-allday-shelf");
+      shelf.style.gridColumn = String(i + 2);
+      shelf.style.gridRow    = "2";
+      for (const event of allDayEvts) this.renderEventPillAllDay(shelf, event);
+    }
+
+    // Row 3 — scrollable time area (time col + all day grids in a nested grid)
+    const timeScroll = calGrid.createDiv("chronicle-week-time-scroll");
+    timeScroll.style.gridColumn = "1 / -1";
+    timeScroll.style.gridRow    = "3";
+
+    const timeInner = timeScroll.createDiv("chronicle-week-time-inner");
+
+    const timeCol = timeInner.createDiv("chronicle-time-col-hours");
+    for (let h = 0; h < 24; h++)
+      timeCol.createDiv("chronicle-time-slot").setText(formatHour12(h));
+
+    for (let i = 0; i < 7; i++) {
+      const day     = days[i];
+      const dateStr = day.toISOString().split("T")[0];
+
+      const timeGrid = timeInner.createDiv("chronicle-day-time-grid");
       timeGrid.style.height = `${24 * HOUR_HEIGHT}px`;
 
       for (let h = 0; h < 24; h++) {
@@ -435,7 +480,7 @@ private getRangeStart(): string {
         const y      = e.clientY - rect.top;
         const hour   = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
         const minute = Math.floor((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-        this.openNewEventModal(dateStr, false, hour, minute);
+        this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
 
       timeGrid.addEventListener("contextmenu", (e) => {
@@ -444,7 +489,7 @@ private getRangeStart(): string {
         const y      = e.clientY - rect.top;
         const hour   = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
         const minute = Math.floor((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, false, hour, minute);
+        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
 
       // Timed events
@@ -469,9 +514,8 @@ private getRangeStart(): string {
     const nowStr      = now.toISOString().split("T")[0];
     const todayColIdx = days.findIndex(d => d.toISOString().split("T")[0] === nowStr);
     if (todayColIdx >= 0) {
-      const cols     = calGrid.querySelectorAll(".chronicle-day-col");
-      const todayCol = cols[todayColIdx] as HTMLElement;
-      const tg       = todayCol.querySelector(".chronicle-day-time-grid") as HTMLElement;
+      const timeGrids = timeInner.querySelectorAll(".chronicle-day-time-grid");
+      const tg        = timeGrids[todayColIdx] as HTMLElement | undefined;
       if (tg) {
         const top  = (now.getHours() + now.getMinutes() / 60) * HOUR_HEIGHT;
         const line = tg.createDiv("chronicle-now-line");
@@ -521,7 +565,7 @@ private getRangeStart(): string {
       const y      = e.clientY - rect.top;
       const hour   = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
       const minute = Math.floor((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-      this.openNewEventModal(dateStr, false, hour, minute);
+      this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
 
     eventCol.addEventListener("contextmenu", (e) => {
@@ -530,7 +574,7 @@ private getRangeStart(): string {
       const y      = e.clientY - rect.top;
       const hour   = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
       const minute = Math.floor((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-      this.showCalContextMenu(e.clientX, e.clientY, dateStr, false, hour, minute);
+      this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
 
     events.filter(e => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId))

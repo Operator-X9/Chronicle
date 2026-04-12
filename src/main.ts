@@ -56,7 +56,7 @@ export default class ChroniclePlugin extends Plugin {
     );
     this.registerView(
       EVENT_FORM_VIEW_TYPE,
-      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.reminderManager)
+      (leaf) => new EventFormView(leaf, this.eventManager, this.calendarManager, this.reminderManager, undefined, undefined, this.settings.defaultAllDay)
     );
 
     this.addRibbonIcon("check-circle", "Chronicle Reminders", () => this.activateReminderView());
@@ -126,7 +126,8 @@ export default class ChroniclePlugin extends Plugin {
       this.reminderManager,
       event,
       undefined,
-      (e) => this.openEventFullPage(e)
+      (e) => this.openEventFullPage(e),
+      this.settings.defaultAllDay
     ).open();
   }
 
