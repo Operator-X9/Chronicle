@@ -389,6 +389,31 @@ Four-tab settings panel inside Obsidian native settings. Calendar + List managem
 
 ---
 
+## Release format
+
+Default body for all GitHub releases:
+
+```
+## Chronicle {version}
+
+### Changes since {previous version}
+- Example
+
+### Manual installation
+1. Download `main.js`, `manifest.json`, and `styles.css` from this release
+2. Create folder `.obsidian/plugins/chronicle/` in your vault
+3. Place all three files inside that folder
+4. Enable Chronicle in Obsidian Settings → Community Plugins
+
+### BRAT installation
+1. Install the [BRAT plugin](https://github.com/TfTHacker/obsidian42-brat)
+2. In BRAT settings click **Add Beta Plugin**
+3. Enter: `https://github.com/Operator-X9/Chronicle`
+4. Enable Chronicle in Community Plugins
+```
+
+---
+
 ## The user / project owner
 
 - macOS, VS Code
