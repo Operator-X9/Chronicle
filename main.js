@@ -903,7 +903,7 @@ var EventFormView = class extends import_obsidian2.ItemView {
   }
   async render() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
-    const container = this.containerEl.children[1];
+    const container = this.contentEl;
     container.empty();
     container.addClass("chronicle-form-page");
     const e = this.editingEvent;
@@ -1305,10 +1305,9 @@ ${body}`;
   async fileToReminder(file) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
     try {
-      const cache = this.app.metadataCache.getFileCache(file);
-      const fm = cache == null ? void 0 : cache.frontmatter;
-      if (!(fm == null ? void 0 : fm.id) || !(fm == null ? void 0 : fm.title)) return null;
       const content = await this.app.vault.read(file);
+      const fm = this.parseFrontmatter(content);
+      if (!(fm == null ? void 0 : fm.id) || !(fm == null ? void 0 : fm.title)) return null;
       const bodyMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
       const notes = ((_a = bodyMatch == null ? void 0 : bodyMatch[1]) == null ? void 0 : _a.trim()) || void 0;
       return {
@@ -1321,7 +1320,6 @@ ${body}`;
         dueTime: (_f = fm["due-time"]) != null ? _f : void 0,
         recurrence: (_g = fm.recurrence) != null ? _g : void 0,
         alert: (_h = fm.alert) != null ? _h : "none",
-        // read new list-id; fall back to legacy calendar-id so old reminders still show their list
         listId: (_j = (_i = fm["list-id"]) != null ? _i : fm["calendar-id"]) != null ? _j : void 0,
         tags: (_k = fm.tags) != null ? _k : [],
         linkedNotes: (_l = fm["linked-notes"]) != null ? _l : [],
@@ -1334,6 +1332,16 @@ ${body}`;
         completedAt: (_s = fm["completed-at"]) != null ? _s : void 0,
         notes
       };
+    } catch (e) {
+      return null;
+    }
+  }
+  parseFrontmatter(content) {
+    var _a;
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return null;
+    try {
+      return (_a = (0, import_obsidian3.parseYaml)(match[1])) != null ? _a : null;
     } catch (e) {
       return null;
     }
@@ -1413,8 +1421,6 @@ var EventManager = class {
     return all.filter((e) => e.startDate >= startDate && e.startDate <= endDate);
   }
   // Expands recurring events into occurrences within a date range.
-  // Returns a flat list of ChronicleEvent objects, one per occurrence,
-  // each with startDate/endDate set to the occurrence date.
   async getInRangeWithRecurrence(rangeStart, rangeEnd) {
     const all = await this.getAll();
     const result = [];
@@ -1513,10 +1519,9 @@ ${body}`;
   async fileToEvent(file) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
     try {
-      const cache = this.app.metadataCache.getFileCache(file);
-      const fm = cache == null ? void 0 : cache.frontmatter;
-      if (!(fm == null ? void 0 : fm.id) || !(fm == null ? void 0 : fm.title)) return null;
       const content = await this.app.vault.read(file);
+      const fm = this.parseFrontmatter(content);
+      if (!(fm == null ? void 0 : fm.id) || !(fm == null ? void 0 : fm.title)) return null;
       const bodyMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
       const notes = ((_a = bodyMatch == null ? void 0 : bodyMatch[1]) == null ? void 0 : _a.trim()) || void 0;
       return {
@@ -1538,6 +1543,16 @@ ${body}`;
         createdAt: (_m = fm["created-at"]) != null ? _m : (/* @__PURE__ */ new Date()).toISOString(),
         notes
       };
+    } catch (e) {
+      return null;
+    }
+  }
+  parseFrontmatter(content) {
+    var _a;
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return null;
+    try {
+      return (_a = (0, import_obsidian4.parseYaml)(match[1])) != null ? _a : null;
     } catch (e) {
       return null;
     }
@@ -1919,7 +1934,7 @@ var ReminderFormView = class extends import_obsidian7.ItemView {
   }
   render() {
     var _a, _b, _c, _d, _e, _f, _g;
-    const container = this.containerEl.children[1];
+    const container = this.contentEl;
     container.empty();
     container.addClass("chronicle-form-page");
     const r = this.editingReminder;
@@ -2059,7 +2074,6 @@ var ReminderView = class extends import_obsidian8.ItemView {
   constructor(leaf, reminderManager, listManager, plugin) {
     super(leaf);
     this.currentListId = "today";
-    this._renderVersion = 0;
     this._debounceTimer = null;
     this.reminderManager = reminderManager;
     this.listManager = listManager;
@@ -2074,7 +2088,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
   getIcon() {
     return "check-circle";
   }
-  debouncedRender(delay = 300) {
+  debouncedRender(delay = 200) {
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
     this._debounceTimer = setTimeout(() => {
       this._debounceTimer = null;
@@ -2104,22 +2118,38 @@ var ReminderView = class extends import_obsidian8.ItemView {
     );
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (isRelevant(file.path)) this.debouncedRender();
+        if (isRelevant(file.path)) this.debouncedRender(400);
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if (leaf === this.leaf) this.debouncedRender(50);
       })
     );
   }
+  async onClose() {
+    if (this._debounceTimer) {
+      clearTimeout(this._debounceTimer);
+      this._debounceTimer = null;
+    }
+  }
   async render() {
+    try {
+      const all = await this.reminderManager.getAll();
+      const today = await this.reminderManager.getDueToday();
+      const scheduled = await this.reminderManager.getScheduled();
+      const overdue = await this.reminderManager.getOverdue();
+      const lists = this.listManager.getAll();
+      const container = this.contentEl;
+      container.empty();
+      container.addClass("chronicle-app");
+      await this.buildUI(container, all, today, scheduled, overdue, lists);
+    } catch (err) {
+      console.error("[Chronicle] reminder render failed", err);
+    }
+  }
+  async buildUI(container, all, today, scheduled, overdue, lists) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
-    const version = ++this._renderVersion;
-    const container = this.containerEl.children[1];
-    container.empty();
-    container.addClass("chronicle-app");
-    const all = await this.reminderManager.getAll();
-    const today = await this.reminderManager.getDueToday();
-    const scheduled = await this.reminderManager.getScheduled();
-    const overdue = await this.reminderManager.getOverdue();
-    const lists = this.listManager.getAll();
-    if (this._renderVersion !== version) return;
     const layout = container.createDiv("chronicle-layout");
     const sidebar = layout.createDiv("chronicle-sidebar");
     const main = layout.createDiv("chronicle-main");
@@ -2315,6 +2345,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
           status: isDone ? "todo" : "done",
           completedAt: isDone ? void 0 : (/* @__PURE__ */ new Date()).toISOString()
         });
+        this.render();
       }, 300);
     });
     const content = row.createDiv("chronicle-reminder-content");
@@ -2365,11 +2396,13 @@ var ReminderView = class extends import_obsidian8.ItemView {
       restoreBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await this.reminderManager.update({ ...reminder, status: "todo", completedAt: void 0 });
+        this.render();
       });
       const deleteBtn = actions.createEl("button", { cls: "chronicle-archive-btn chronicle-archive-btn-delete", text: "Delete" });
       deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await this.reminderManager.delete(reminder.id);
+        this.render();
       });
       return;
     }
@@ -2390,6 +2423,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
       deleteItem.addEventListener("click", async () => {
         menu.remove();
         await this.reminderManager.delete(reminder.id);
+        this.render();
       });
       const cancelItem = menu.createDiv("chronicle-context-item");
       cancelItem.setText("Cancel");
@@ -2812,7 +2846,6 @@ var CalendarView = class extends import_obsidian11.ItemView {
     this.currentDate = /* @__PURE__ */ new Date();
     this.mode = "week";
     this._modeSet = false;
-    this._renderVersion = 0;
     this._debounceTimer = null;
     this.eventManager = eventManager;
     this.reminderManager = reminderManager;
@@ -2828,7 +2861,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
   getIcon() {
     return "calendar";
   }
-  debouncedRender(delay = 300) {
+  debouncedRender(delay = 200) {
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
     this._debounceTimer = setTimeout(() => {
       this._debounceTimer = null;
@@ -2858,34 +2891,47 @@ var CalendarView = class extends import_obsidian11.ItemView {
     );
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (isRelevant(file.path)) this.debouncedRender();
+        if (isRelevant(file.path)) this.debouncedRender(400);
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if (leaf === this.leaf) this.debouncedRender(50);
       })
     );
   }
+  async onClose() {
+    if (this._debounceTimer) {
+      clearTimeout(this._debounceTimer);
+      this._debounceTimer = null;
+    }
+  }
   async render() {
     var _a;
-    const version = ++this._renderVersion;
-    const container = this.containerEl.children[1];
-    container.empty();
-    container.addClass("chronicle-cal-app");
-    const reminders = await this.reminderManager.getAll();
     if (!this._modeSet) {
       this.mode = (_a = this.plugin.settings.defaultCalendarView) != null ? _a : "week";
       this._modeSet = true;
     }
-    const rangeStart = this.getRangeStart();
-    const rangeEnd = this.getRangeEnd();
-    const events = await this.eventManager.getInRangeWithRecurrence(rangeStart, rangeEnd);
-    if (this._renderVersion !== version) return;
-    const layout = container.createDiv("chronicle-cal-layout");
-    const sidebar = layout.createDiv("chronicle-cal-sidebar");
-    const main = layout.createDiv("chronicle-cal-main");
-    this.renderSidebar(sidebar);
-    this.renderToolbar(main);
-    if (this.mode === "year") this.renderYearView(main, events, reminders);
-    else if (this.mode === "month") this.renderMonthView(main, events, reminders);
-    else if (this.mode === "week") this.renderWeekView(main, events, reminders);
-    else this.renderDayView(main, events, reminders);
+    try {
+      const reminders = await this.reminderManager.getAll();
+      const rangeStart = this.getRangeStart();
+      const rangeEnd = this.getRangeEnd();
+      const events = await this.eventManager.getInRangeWithRecurrence(rangeStart, rangeEnd);
+      const container = this.contentEl;
+      container.empty();
+      container.addClass("chronicle-cal-app");
+      const layout = container.createDiv("chronicle-cal-layout");
+      const sidebar = layout.createDiv("chronicle-cal-sidebar");
+      const main = layout.createDiv("chronicle-cal-main");
+      this.renderSidebar(sidebar);
+      this.renderToolbar(main);
+      if (this.mode === "year") this.renderYearView(main, events, reminders);
+      else if (this.mode === "month") this.renderMonthView(main, events, reminders);
+      else if (this.mode === "week") this.renderWeekView(main, events, reminders);
+      else this.renderDayView(main, events, reminders);
+    } catch (err) {
+      console.error("[Chronicle] calendar render failed", err);
+    }
   }
   async openEventFullPage(event) {
     const { workspace } = this.app;

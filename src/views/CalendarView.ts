@@ -21,7 +21,6 @@ export class CalendarView extends ItemView {
   private currentDate: Date         = new Date();
   private mode:        CalendarMode = "week";
   private _modeSet                  = false;
-  private _renderVersion            = 0;
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -42,9 +41,12 @@ export class CalendarView extends ItemView {
   getDisplayText(): string { return "Calendar"; }
   getIcon():        string { return "calendar"; }
 
-  private debouncedRender(delay = 300) {
+  private debouncedRender(delay = 200) {
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(() => { this._debounceTimer = null; this.render(); }, delay);
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      this.render();
+    }, delay);
   }
 
   async onOpen() {
@@ -74,43 +76,52 @@ export class CalendarView extends ItemView {
     );
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (isRelevant(file.path)) this.debouncedRender();
+        if (isRelevant(file.path)) this.debouncedRender(400);
+      })
+    );
+    // Re-render when this tab gains focus — catches any changes that
+    // LiveSync (or other plugins) made while the tab was in the background.
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if (leaf === this.leaf) this.debouncedRender(50);
       })
     );
   }
 
+  async onClose() {
+    if (this._debounceTimer) { clearTimeout(this._debounceTimer); this._debounceTimer = null; }
+  }
+
   async render() {
-    const version = ++this._renderVersion;
-    const container = this.containerEl.children[1] as HTMLElement;
-    container.empty();
-    container.addClass("chronicle-cal-app");
-
-    const reminders = await this.reminderManager.getAll();
-
-    // Apply default view from settings if this is the first render
     if (!this._modeSet) {
       this.mode     = this.plugin.settings.defaultCalendarView ?? "week";
       this._modeSet = true;
     }
 
-    // Get date range for current view so recurrence expansion is scoped
-    const rangeStart = this.getRangeStart();
-    const rangeEnd   = this.getRangeEnd();
-    const events     = await this.eventManager.getInRangeWithRecurrence(rangeStart, rangeEnd);
+    try {
+      const reminders  = await this.reminderManager.getAll();
+      const rangeStart = this.getRangeStart();
+      const rangeEnd   = this.getRangeEnd();
+      const events     = await this.eventManager.getInRangeWithRecurrence(rangeStart, rangeEnd);
 
-    if (this._renderVersion !== version) return;
+      const container = this.contentEl;
+      container.empty();
+      container.addClass("chronicle-cal-app");
 
-    const layout  = container.createDiv("chronicle-cal-layout");
-    const sidebar = layout.createDiv("chronicle-cal-sidebar");
-    const main    = layout.createDiv("chronicle-cal-main");
+      const layout  = container.createDiv("chronicle-cal-layout");
+      const sidebar = layout.createDiv("chronicle-cal-sidebar");
+      const main    = layout.createDiv("chronicle-cal-main");
 
-    this.renderSidebar(sidebar);
-    this.renderToolbar(main);
+      this.renderSidebar(sidebar);
+      this.renderToolbar(main);
 
-    if      (this.mode === "year")  this.renderYearView(main, events, reminders);
-    else if (this.mode === "month") this.renderMonthView(main, events, reminders);
-    else if (this.mode === "week")  this.renderWeekView(main, events, reminders);
-    else                            this.renderDayView(main, events, reminders);
+      if      (this.mode === "year")  this.renderYearView(main, events, reminders);
+      else if (this.mode === "month") this.renderMonthView(main, events, reminders);
+      else if (this.mode === "week")  this.renderWeekView(main, events, reminders);
+      else                            this.renderDayView(main, events, reminders);
+    } catch (err) {
+      console.error("[Chronicle] calendar render failed", err);
+    }
   }
 
 private async openEventFullPage(event?: ChronicleEvent) {

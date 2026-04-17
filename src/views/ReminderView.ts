@@ -15,7 +15,6 @@ export class ReminderView extends ItemView {
   private listManager: ListManager;
   private plugin: ChroniclePlugin;
   private currentListId: string = "today";
-  private _renderVersion = 0;
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -34,9 +33,12 @@ export class ReminderView extends ItemView {
   getDisplayText(): string { return "Reminders"; }
   getIcon(): string { return "check-circle"; }
 
-  private debouncedRender(delay = 300) {
+  private debouncedRender(delay = 200) {
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(() => { this._debounceTimer = null; this.render(); }, delay);
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      this.render();
+    }, delay);
   }
 
   async onOpen() {
@@ -64,24 +66,48 @@ export class ReminderView extends ItemView {
     );
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (isRelevant(file.path)) this.debouncedRender();
+        if (isRelevant(file.path)) this.debouncedRender(400);
+      })
+    );
+    // Re-render when this tab gains focus — catches any changes that
+    // LiveSync (or other plugins) made while the tab was in the background.
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if (leaf === this.leaf) this.debouncedRender(50);
       })
     );
   }
 
+  async onClose() {
+    if (this._debounceTimer) { clearTimeout(this._debounceTimer); this._debounceTimer = null; }
+  }
+
   async render() {
-    const version = ++this._renderVersion;
-    const container = this.containerEl.children[1] as HTMLElement;
-    container.empty();
-    container.addClass("chronicle-app");
+    try {
+      const all       = await this.reminderManager.getAll();
+      const today     = await this.reminderManager.getDueToday();
+      const scheduled = await this.reminderManager.getScheduled();
+      const overdue   = await this.reminderManager.getOverdue();
+      const lists     = this.listManager.getAll();
 
-    const all       = await this.reminderManager.getAll();
-    const today     = await this.reminderManager.getDueToday();
-    const scheduled = await this.reminderManager.getScheduled();
-    const overdue   = await this.reminderManager.getOverdue();
-    const lists     = this.listManager.getAll();
+      const container = this.contentEl;
+      container.empty();
+      container.addClass("chronicle-app");
 
-    if (this._renderVersion !== version) return;
+      await this.buildUI(container, all, today, scheduled, overdue, lists);
+    } catch (err) {
+      console.error("[Chronicle] reminder render failed", err);
+    }
+  }
+
+  private async buildUI(
+    container: HTMLElement,
+    all: ChronicleReminder[],
+    today: ChronicleReminder[],
+    scheduled: ChronicleReminder[],
+    overdue: ChronicleReminder[],
+    lists: ReturnType<ListManager["getAll"]>,
+  ) {
 
     const layout  = container.createDiv("chronicle-layout");
     const sidebar = layout.createDiv("chronicle-sidebar");
@@ -311,6 +337,7 @@ export class ReminderView extends ItemView {
           status:      isDone ? "todo" : "done",
           completedAt: isDone ? undefined : new Date().toISOString(),
         });
+        this.render();
       }, 300);
     });
 
@@ -367,11 +394,13 @@ export class ReminderView extends ItemView {
       restoreBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await this.reminderManager.update({ ...reminder, status: "todo", completedAt: undefined });
+        this.render();
       });
       const deleteBtn = actions.createEl("button", { cls: "chronicle-archive-btn chronicle-archive-btn-delete", text: "Delete" });
       deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await this.reminderManager.delete(reminder.id);
+        this.render();
       });
       return;
     }
@@ -390,7 +419,7 @@ export class ReminderView extends ItemView {
 
       const deleteItem = menu.createDiv("chronicle-context-item chronicle-context-delete");
       deleteItem.setText("Delete reminder");
-      deleteItem.addEventListener("click", async () => { menu.remove(); await this.reminderManager.delete(reminder.id); });
+      deleteItem.addEventListener("click", async () => { menu.remove(); await this.reminderManager.delete(reminder.id); this.render(); });
 
       const cancelItem = menu.createDiv("chronicle-context-item");
       cancelItem.setText("Cancel");

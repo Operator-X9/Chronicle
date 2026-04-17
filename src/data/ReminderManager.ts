@@ -1,5 +1,5 @@
 import { ChronicleReminder, ReminderStatus, ReminderPriority, AlertOffset } from "../types";
-import { App, TFile, normalizePath } from "obsidian";
+import { App, TFile, normalizePath, parseYaml } from "obsidian";
 
 export class ReminderManager {
   constructor(private app: App, private remindersFolder: string) {}
@@ -129,13 +129,12 @@ export class ReminderManager {
 
   private async fileToReminder(file: TFile): Promise<ChronicleReminder | null> {
     try {
-      const cache = this.app.metadataCache.getFileCache(file);
-      const fm = cache?.frontmatter;
+      const content = await this.app.vault.read(file);
+      const fm      = this.parseFrontmatter(content);
       if (!fm?.id || !fm?.title) return null;
 
-      const content = await this.app.vault.read(file);
       const bodyMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
-      const notes = bodyMatch?.[1]?.trim() || undefined;
+      const notes     = bodyMatch?.[1]?.trim() || undefined;
 
       return {
         id:                 fm.id,
@@ -147,7 +146,6 @@ export class ReminderManager {
         dueTime:            fm["due-time"] ?? undefined,
         recurrence:         fm.recurrence ?? undefined,
         alert:              (fm.alert as AlertOffset) ?? "none",
-        // read new list-id; fall back to legacy calendar-id so old reminders still show their list
         listId:             fm["list-id"] ?? fm["calendar-id"] ?? undefined,
         tags:               fm.tags ?? [],
         linkedNotes:        fm["linked-notes"] ?? [],
@@ -163,6 +161,12 @@ export class ReminderManager {
     } catch {
       return null;
     }
+  }
+
+  private parseFrontmatter(content: string): Record<string, any> | null {
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return null;
+    try { return parseYaml(match[1]) ?? null; } catch { return null; }
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

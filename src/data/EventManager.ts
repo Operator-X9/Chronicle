@@ -1,4 +1,4 @@
-import { App, TFile, normalizePath } from "obsidian";
+import { App, TFile, normalizePath, parseYaml } from "obsidian";
 import { ChronicleEvent, AlertOffset } from "../types";
 
 export class EventManager {
@@ -55,23 +55,19 @@ export class EventManager {
     return all.filter((e) => e.startDate >= startDate && e.startDate <= endDate);
   }
 
-// Expands recurring events into occurrences within a date range.
-  // Returns a flat list of ChronicleEvent objects, one per occurrence,
-  // each with startDate/endDate set to the occurrence date.
+  // Expands recurring events into occurrences within a date range.
   async getInRangeWithRecurrence(rangeStart: string, rangeEnd: string): Promise<ChronicleEvent[]> {
     const all    = await this.getAll();
     const result: ChronicleEvent[] = [];
 
     for (const event of all) {
       if (!event.recurrence) {
-        // Non-recurring — include if it falls in range
         if (event.startDate >= rangeStart && event.startDate <= rangeEnd) {
           result.push(event);
         }
         continue;
       }
 
-      // Expand recurrence within range
       const occurrences = this.expandRecurrence(event, rangeStart, rangeEnd);
       result.push(...occurrences);
     }
@@ -83,7 +79,6 @@ export class EventManager {
     const results: ChronicleEvent[] = [];
     const rule = event.recurrence ?? "";
 
-    // Parse RRULE parts
     const freq    = this.rrulePart(rule, "FREQ");
     const byDay   = this.rrulePart(rule, "BYDAY");
     const until   = this.rrulePart(rule, "UNTIL");
@@ -106,7 +101,6 @@ export class EventManager {
 
       const dateStr = current.toISOString().split("T")[0];
 
-      // Calculate duration to apply to each occurrence
       const durationMs = new Date(event.endDate + "T00:00:00").getTime() - start.getTime();
       const endDate    = new Date(current.getTime() + durationMs).toISOString().split("T")[0];
 
@@ -115,12 +109,10 @@ export class EventManager {
         generated++;
       }
 
-      // Advance to next occurrence
       if (freq === "DAILY") {
         current.setDate(current.getDate() + 1);
       } else if (freq === "WEEKLY") {
         if (byDays.length > 0) {
-          // Find next matching weekday
           current.setDate(current.getDate() + 1);
           let safety = 0;
           while (!byDays.includes(dayNames[current.getDay()]) && safety++ < 7) {
@@ -134,7 +126,7 @@ export class EventManager {
       } else if (freq === "YEARLY") {
         current.setFullYear(current.getFullYear() + 1);
       } else {
-        break; // Unknown freq — stop to avoid infinite loop
+        break;
       }
     }
 
@@ -176,13 +168,12 @@ export class EventManager {
 
   private async fileToEvent(file: TFile): Promise<ChronicleEvent | null> {
     try {
-      const cache = this.app.metadataCache.getFileCache(file);
-      const fm = cache?.frontmatter;
+      const content = await this.app.vault.read(file);
+      const fm      = this.parseFrontmatter(content);
       if (!fm?.id || !fm?.title) return null;
 
-      const content = await this.app.vault.read(file);
       const bodyMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
-      const notes = bodyMatch?.[1]?.trim() || undefined;
+      const notes     = bodyMatch?.[1]?.trim() || undefined;
 
       return {
         id:                   fm.id,
@@ -206,6 +197,12 @@ export class EventManager {
     } catch {
       return null;
     }
+  }
+
+  private parseFrontmatter(content: string): Record<string, any> | null {
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return null;
+    try { return parseYaml(match[1]) ?? null; } catch { return null; }
   }
 
   private findFileForEvent(id: string): TFile | null {

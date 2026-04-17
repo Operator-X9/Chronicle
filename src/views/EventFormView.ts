@@ -46,7 +46,7 @@ export class EventFormView extends ItemView {
   }
 
   async render() {
-    const container = this.containerEl.children[1] as HTMLElement;
+    const container = this.contentEl;
     container.empty();
     container.addClass("chronicle-form-page");
 

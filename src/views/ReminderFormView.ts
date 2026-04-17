@@ -39,7 +39,7 @@ export class ReminderFormView extends ItemView {
   }
 
   render() {
-    const container = this.containerEl.children[1] as HTMLElement;
+    const container = this.contentEl;
     container.empty();
     container.addClass("chronicle-form-page");
 
