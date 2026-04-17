@@ -394,8 +394,6 @@ Four-tab settings panel inside Obsidian native settings. Calendar + List managem
 Default body for all GitHub releases:
 
 ```
-## Chronicle {version}
-
 ### Changes since {previous version}
 - Example
 
