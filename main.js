@@ -561,6 +561,7 @@ var ChronicleSettingsTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/data/AlertManager.ts
+var import_obsidian2 = require("obsidian");
 var AlertManager = class {
   constructor(app, reminderManager, eventManager, getSettings) {
     this.intervalId = null;
@@ -575,7 +576,7 @@ var AlertManager = class {
     this.getSettings = getSettings;
   }
   start() {
-    if ("Notification" in window && Notification.permission === "default") {
+    if (import_obsidian2.Platform.isDesktop && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
     setTimeout(() => {
@@ -662,15 +663,18 @@ var AlertManager = class {
     const doNotif = (_a = settings.notifMacOS) != null ? _a : true;
     const doSound = (_b = settings.notifSound) != null ? _b : true;
     const rawSound = type === "event" ? (_c = settings.notifSoundEvent) != null ? _c : "Glass" : (_d = settings.notifSoundReminder) != null ? _d : "Glass";
-    if (doNotif && Notification.permission === "granted") {
+    if (doNotif && import_obsidian2.Platform.isDesktop && "Notification" in window && Notification.permission === "granted") {
       new Notification(`Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}`, {
         body: `${title}
 ${body}`,
         silent: true
-        // we control sound separately below
       });
+    } else if (doNotif && import_obsidian2.Platform.isMobile) {
+      new import_obsidian2.Notice(`Chronicle \u2014 ${type === "event" ? "Event" : "Reminder"}
+${title}
+${body}`, 8e3);
     }
-    if (doSound && rawSound && rawSound !== "none") {
+    if (doSound && rawSound && rawSound !== "none" && import_obsidian2.Platform.isDesktop && import_obsidian2.Platform.isMacOS) {
       try {
         const { exec } = window.require("child_process");
         exec(`afplay "/System/Library/Sounds/${rawSound}.aiff"`);
@@ -781,7 +785,7 @@ var DEFAULT_SETTINGS = {
 };
 
 // src/views/EventFormView.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/ui/tagField.ts
 function buildTagField(app, wrapper, initial) {
@@ -874,7 +878,7 @@ function buildTagField(app, wrapper, initial) {
 
 // src/views/EventFormView.ts
 var EVENT_FORM_VIEW_TYPE = "chronicle-event-form";
-var EventFormView = class extends import_obsidian2.ItemView {
+var EventFormView = class extends import_obsidian3.ItemView {
   constructor(leaf, eventManager, calendarManager, reminderManager, editingEvent, onSave, defaultAllDay) {
     super(leaf);
     this.editingEvent = null;
@@ -1145,7 +1149,7 @@ var EventFormView = class extends import_obsidian2.ItemView {
 };
 
 // src/main.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/data/ListManager.ts
 var ListManager = class {
@@ -1189,7 +1193,7 @@ var ListManager = class {
 };
 
 // src/data/ReminderManager.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var ReminderManager = class {
   constructor(app, remindersFolder) {
     this.app = app;
@@ -1201,7 +1205,7 @@ var ReminderManager = class {
     if (!folder) return [];
     const reminders = [];
     for (const child of folder.children) {
-      if (child instanceof import_obsidian3.TFile && child.extension === "md") {
+      if (child instanceof import_obsidian4.TFile && child.extension === "md") {
         const reminder = await this.fileToReminder(child);
         if (reminder) reminders.push(reminder);
       }
@@ -1221,7 +1225,7 @@ var ReminderManager = class {
       id: this.generateId(),
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const path = (0, import_obsidian3.normalizePath)(`${this.remindersFolder}/${full.title}.md`);
+    const path = (0, import_obsidian4.normalizePath)(`${this.remindersFolder}/${full.title}.md`);
     await this.app.vault.create(path, this.reminderToMarkdown(full));
     return full;
   }
@@ -1229,7 +1233,7 @@ var ReminderManager = class {
     var _a;
     const file = this.findFileForReminder(reminder.id);
     if (!file) return;
-    const expectedPath = (0, import_obsidian3.normalizePath)(`${this.remindersFolder}/${reminder.title}.md`);
+    const expectedPath = (0, import_obsidian4.normalizePath)(`${this.remindersFolder}/${reminder.title}.md`);
     if (file.path !== expectedPath) {
       await this.app.fileManager.renameFile(file, expectedPath);
     }
@@ -1341,7 +1345,7 @@ ${body}`;
     const match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return null;
     try {
-      return (_a = (0, import_obsidian3.parseYaml)(match[1])) != null ? _a : null;
+      return (_a = (0, import_obsidian4.parseYaml)(match[1])) != null ? _a : null;
     } catch (e) {
       return null;
     }
@@ -1352,7 +1356,7 @@ ${body}`;
     const folder = this.app.vault.getFolderByPath(this.remindersFolder);
     if (!folder) return null;
     for (const child of folder.children) {
-      if (!(child instanceof import_obsidian3.TFile)) continue;
+      if (!(child instanceof import_obsidian4.TFile)) continue;
       const cache = this.app.metadataCache.getFileCache(child);
       if (((_a = cache == null ? void 0 : cache.frontmatter) == null ? void 0 : _a.id) === id) return child;
     }
@@ -1372,7 +1376,7 @@ ${body}`;
 };
 
 // src/data/EventManager.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 var EventManager = class {
   constructor(app, eventsFolder) {
     this.app = app;
@@ -1383,7 +1387,7 @@ var EventManager = class {
     if (!folder) return [];
     const events = [];
     for (const child of folder.children) {
-      if (child instanceof import_obsidian4.TFile && child.extension === "md") {
+      if (child instanceof import_obsidian5.TFile && child.extension === "md") {
         const event = await this.fileToEvent(child);
         if (event) events.push(event);
       }
@@ -1397,7 +1401,7 @@ var EventManager = class {
       id: this.generateId(),
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const path = (0, import_obsidian4.normalizePath)(`${this.eventsFolder}/${full.title}.md`);
+    const path = (0, import_obsidian5.normalizePath)(`${this.eventsFolder}/${full.title}.md`);
     await this.app.vault.create(path, this.eventToMarkdown(full));
     return full;
   }
@@ -1405,7 +1409,7 @@ var EventManager = class {
     var _a;
     const file = this.findFileForEvent(event.id);
     if (!file) return;
-    const expectedPath = (0, import_obsidian4.normalizePath)(`${this.eventsFolder}/${event.title}.md`);
+    const expectedPath = (0, import_obsidian5.normalizePath)(`${this.eventsFolder}/${event.title}.md`);
     if (file.path !== expectedPath) {
       await this.app.fileManager.renameFile(file, expectedPath);
     }
@@ -1552,7 +1556,7 @@ ${body}`;
     const match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return null;
     try {
-      return (_a = (0, import_obsidian4.parseYaml)(match[1])) != null ? _a : null;
+      return (_a = (0, import_obsidian5.parseYaml)(match[1])) != null ? _a : null;
     } catch (e) {
       return null;
     }
@@ -1562,7 +1566,7 @@ ${body}`;
     const folder = this.app.vault.getFolderByPath(this.eventsFolder);
     if (!folder) return null;
     for (const child of folder.children) {
-      if (!(child instanceof import_obsidian4.TFile)) continue;
+      if (!(child instanceof import_obsidian5.TFile)) continue;
       const cache = this.app.metadataCache.getFileCache(child);
       if (((_a = cache == null ? void 0 : cache.frontmatter) == null ? void 0 : _a.id) === id) return child;
     }
@@ -1579,11 +1583,11 @@ ${body}`;
 };
 
 // src/views/ReminderView.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/ui/ReminderModal.ts
-var import_obsidian5 = require("obsidian");
-var ReminderModal = class extends import_obsidian5.Modal {
+var import_obsidian6 = require("obsidian");
+var ReminderModal = class extends import_obsidian6.Modal {
   constructor(app, reminderManager, listManager, editingReminder, onSave, onExpand, plugin) {
     super(app);
     this.reminderManager = reminderManager;
@@ -1697,7 +1701,7 @@ var ReminderModal = class extends import_obsidian5.Modal {
         const existing = await this.reminderManager.getAll();
         const duplicate = existing.find((e) => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new import_obsidian5.Notice(`A reminder named "${title}" already exists.`, 4e3);
+          new import_obsidian6.Notice(`A reminder named "${title}" already exists.`, 4e3);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
@@ -1747,7 +1751,7 @@ var ReminderModal = class extends import_obsidian5.Modal {
 };
 
 // src/ui/ReminderDetailPopup.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/utils/formatters.ts
 function formatDateFull(dateStr) {
@@ -1829,7 +1833,7 @@ function todayStr() {
 }
 
 // src/ui/ReminderDetailPopup.ts
-var ReminderDetailPopup = class extends import_obsidian6.Modal {
+var ReminderDetailPopup = class extends import_obsidian7.Modal {
   constructor(app, reminder, listManager, timeFormat, onEdit) {
     super(app);
     this.reminder = reminder;
@@ -1905,9 +1909,9 @@ var ReminderDetailPopup = class extends import_obsidian6.Modal {
 };
 
 // src/views/ReminderFormView.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var REMINDER_FORM_VIEW_TYPE = "chronicle-reminder-form";
-var ReminderFormView = class extends import_obsidian7.ItemView {
+var ReminderFormView = class extends import_obsidian8.ItemView {
   constructor(leaf, reminderManager, listManager, editingReminder, onSave) {
     super(leaf);
     this.editingReminder = null;
@@ -2024,7 +2028,7 @@ var ReminderFormView = class extends import_obsidian7.ItemView {
         const existing = await this.reminderManager.getAll();
         const duplicate = existing.find((e) => e.title.toLowerCase() === title.toLowerCase());
         if (duplicate) {
-          new import_obsidian7.Notice(`A reminder named "${title}" already exists.`, 4e3);
+          new import_obsidian8.Notice(`A reminder named "${title}" already exists.`, 4e3);
           titleInput.classList.add("cf-error");
           titleInput.focus();
           return;
@@ -2068,9 +2072,50 @@ var ReminderFormView = class extends import_obsidian7.ItemView {
   }
 };
 
+// src/utils/touch.ts
+function bindContextMenu(el, handler) {
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    handler(e.clientX, e.clientY);
+  });
+  let timer = null;
+  let startX = 0, startY = 0;
+  const MOVE_THRESHOLD = 10;
+  const DELAY = 500;
+  const clear = () => {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+  };
+  el.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) {
+      clear();
+      return;
+    }
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    clear();
+    timer = window.setTimeout(() => {
+      timer = null;
+      handler(startX, startY);
+    }, DELAY);
+  }, { passive: true });
+  el.addEventListener("touchmove", (e) => {
+    if (timer === null) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > MOVE_THRESHOLD || Math.abs(t.clientY - startY) > MOVE_THRESHOLD) {
+      clear();
+    }
+  }, { passive: true });
+  el.addEventListener("touchend", clear, { passive: true });
+  el.addEventListener("touchcancel", clear, { passive: true });
+}
+
 // src/views/ReminderView.ts
 var REMINDER_VIEW_TYPE = "chronicle-reminder-view";
-var ReminderView = class extends import_obsidian8.ItemView {
+var ReminderView = class extends import_obsidian9.ItemView {
   constructor(leaf, reminderManager, listManager, plugin) {
     super(leaf);
     this.currentListId = "today";
@@ -2177,7 +2222,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
       if (!tile || !tile.visible) continue;
       const t = tilesGrid.createDiv("chronicle-tile");
       t.dataset.tileId = id;
-      t.draggable = true;
+      t.draggable = import_obsidian9.Platform.isDesktop;
       t.style.backgroundColor = tile.color;
       if (id === this.currentListId) t.addClass("active");
       const topRow = t.createDiv("chronicle-tile-top");
@@ -2192,6 +2237,7 @@ var ReminderView = class extends import_obsidian8.ItemView {
         this.currentListId = id;
         this.render();
       });
+      if (!import_obsidian9.Platform.isDesktop) continue;
       t.addEventListener("dragstart", (e) => {
         var _a2;
         dragSrcId = id;
@@ -2406,12 +2452,11 @@ var ReminderView = class extends import_obsidian8.ItemView {
       });
       return;
     }
-    row.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
+    bindContextMenu(row, (x, y) => {
       const menu = document.createElement("div");
       menu.className = "chronicle-context-menu";
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top = `${e.clientY}px`;
+      menu.style.left = `${x}px`;
+      menu.style.top = `${y}px`;
       const editItem = menu.createDiv("chronicle-context-item");
       editItem.setText("Edit reminder");
       editItem.addEventListener("click", () => {
@@ -2502,11 +2547,11 @@ var ReminderView = class extends import_obsidian8.ItemView {
 };
 
 // src/views/CalendarView.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/ui/EventModal.ts
-var import_obsidian9 = require("obsidian");
-var EventModal = class extends import_obsidian9.Modal {
+var import_obsidian10 = require("obsidian");
+var EventModal = class extends import_obsidian10.Modal {
   constructor(app, eventManager, calendarManager, reminderManager, editingEvent, onSave, onExpand, defaultAllDay) {
     super(app);
     this.eventManager = eventManager;
@@ -2740,8 +2785,8 @@ var EventModal = class extends import_obsidian9.Modal {
 };
 
 // src/ui/EventDetailPopup.ts
-var import_obsidian10 = require("obsidian");
-var EventDetailPopup = class extends import_obsidian10.Modal {
+var import_obsidian11 = require("obsidian");
+var EventDetailPopup = class extends import_obsidian11.Modal {
   constructor(app, event, calendarManager, reminderManager, timeFormat, onEdit) {
     super(app);
     this.event = event;
@@ -2840,7 +2885,7 @@ var EventDetailPopup = class extends import_obsidian10.Modal {
 // src/views/CalendarView.ts
 var CALENDAR_VIEW_TYPE = "chronicle-calendar-view";
 var HOUR_HEIGHT = 56;
-var CalendarView = class extends import_obsidian11.ItemView {
+var CalendarView = class extends import_obsidian12.ItemView {
   constructor(leaf, eventManager, reminderManager, calendarManager, plugin) {
     super(leaf);
     this.currentDate = /* @__PURE__ */ new Date();
@@ -2909,7 +2954,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
   async render() {
     var _a;
     if (!this._modeSet) {
-      this.mode = (_a = this.plugin.settings.defaultCalendarView) != null ? _a : "week";
+      this.mode = import_obsidian12.Platform.isMobile ? "day" : (_a = this.plugin.settings.defaultCalendarView) != null ? _a : "week";
       this._modeSet = true;
     }
     try {
@@ -3148,9 +3193,8 @@ var CalendarView = class extends import_obsidian11.ItemView {
       if (dateStr === todayStr2) cell.addClass("today");
       cell.createDiv("chronicle-month-cell-num").setText(String(d));
       cell.addEventListener("dblclick", () => this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay));
-      cell.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay);
+      bindContextMenu(cell, (x, y) => {
+        this.showCalContextMenu(x, y, dateStr, this.plugin.settings.defaultAllDay);
       });
       const dayEvents = events.filter((e) => e.startDate === dateStr && this.isCalendarVisible(e.calendarId));
       const dayReminders = reminders.filter((t) => t.dueDate === dateStr && t.status !== "done");
@@ -3259,13 +3303,12 @@ var CalendarView = class extends import_obsidian11.ItemView {
         const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
         this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
-      timeGrid.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
+      bindContextMenu(timeGrid, (cx, cy) => {
         const rect = timeGrid.getBoundingClientRect();
-        const y = e.clientY - rect.top;
+        const y = cy - rect.top;
         const hour = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
         const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
+        this.showCalContextMenu(cx, cy, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
       events.filter((e) => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId)).forEach((event) => this.renderEventPillTimed(timeGrid, event));
       reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
@@ -3326,13 +3369,12 @@ var CalendarView = class extends import_obsidian11.ItemView {
       const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
       this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
-    eventCol.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
+    bindContextMenu(eventCol, (cx, cy) => {
       const rect = eventCol.getBoundingClientRect();
-      const y = e.clientY - rect.top;
+      const y = cy - rect.top;
       const hour = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
       const minute = Math.floor(y % HOUR_HEIGHT / HOUR_HEIGHT * 60 / 15) * 15;
-      this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
+      this.showCalContextMenu(cx, cy, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
     events.filter((e) => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId)).forEach((event) => this.renderEventPillTimed(eventCol, event));
     reminders.filter((t) => t.dueDate === dateStr && t.status !== "done").forEach((task) => {
@@ -3435,10 +3477,8 @@ var CalendarView = class extends import_obsidian11.ItemView {
       e.stopPropagation();
       new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
     });
-    pill.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.showEventContextMenu(e.clientX, e.clientY, event);
+    bindContextMenu(pill, (x, y) => {
+      this.showEventContextMenu(x, y, event);
     });
   }
   renderEventPillAllDay(container, event) {
@@ -3454,10 +3494,8 @@ var CalendarView = class extends import_obsidian11.ItemView {
       "click",
       () => new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open()
     );
-    pill.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.showEventContextMenu(e.clientX, e.clientY, event);
+    bindContextMenu(pill, (x, y) => {
+      this.showEventContextMenu(x, y, event);
     });
   }
   isCalendarVisible(calendarId) {
@@ -3468,7 +3506,7 @@ var CalendarView = class extends import_obsidian11.ItemView {
 };
 
 // src/main.ts
-var ChroniclePlugin = class extends import_obsidian12.Plugin {
+var ChroniclePlugin = class extends import_obsidian13.Plugin {
   async onload() {
     await this.loadSettings();
     this.calendarManager = new CalendarManager(

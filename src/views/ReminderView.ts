@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf, Platform } from "obsidian";
 import { ReminderModal } from "../ui/ReminderModal";
 import { ReminderDetailPopup } from "../ui/ReminderDetailPopup";
 import type ChroniclePlugin from "../main";
@@ -7,6 +7,7 @@ import { ReminderManager } from "../data/ReminderManager";
 import { ListManager } from "../data/ListManager";
 import { ReminderFormView, REMINDER_FORM_VIEW_TYPE } from "./ReminderFormView";
 import { formatDateRelative, todayStr } from "../utils/formatters";
+import { bindContextMenu } from "../utils/touch";
 
 export const REMINDER_VIEW_TYPE = "chronicle-reminder-view";
 
@@ -149,7 +150,7 @@ export class ReminderView extends ItemView {
 
       const t = tilesGrid.createDiv("chronicle-tile");
       t.dataset.tileId = id;
-      t.draggable = true;
+      t.draggable = Platform.isDesktop;
       t.style.backgroundColor = tile.color;
       if (id === this.currentListId) t.addClass("active");
 
@@ -166,7 +167,8 @@ export class ReminderView extends ItemView {
 
       t.addEventListener("click", () => { this.currentListId = id; this.render(); });
 
-      // ── Drag-and-drop ──────────────────────────────────────────────────
+      // ── Drag-and-drop (desktop only — HTML5 DnD not supported on touch) ──
+      if (!Platform.isDesktop) continue;
       t.addEventListener("dragstart", (e) => {
         dragSrcId = id;
         t.addClass("chronicle-tile-dragging");
@@ -405,13 +407,12 @@ export class ReminderView extends ItemView {
       return;
     }
 
-    // Right-click context menu
-    row.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
+    // Right-click / long-press context menu
+    bindContextMenu(row, (x, y) => {
       const menu = document.createElement("div");
       menu.className  = "chronicle-context-menu";
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top  = `${e.clientY}px`;
+      menu.style.left = `${x}px`;
+      menu.style.top  = `${y}px`;
 
       const editItem = menu.createDiv("chronicle-context-item");
       editItem.setText("Edit reminder");

@@ -2023,3 +2023,66 @@
 .ctf-tag-label {
   color: var(--text-normal);
 }
+
+/* ── Mobile responsive (≤ 700px) ──────────────────────────────────────── */
+@media (max-width: 700px) {
+  /* Reminder + Calendar layouts: stack sidebar above main */
+  .chronicle-layout,
+  .chronicle-cal-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    padding: 4px;
+  }
+
+  .chronicle-sidebar,
+  .chronicle-cal-sidebar {
+    max-height: 38vh;
+    padding: 10px 8px;
+    gap: 12px;
+    border-radius: var(--radius-m);
+  }
+
+  .chronicle-main,
+  .chronicle-cal-main {
+    border-radius: var(--radius-m);
+  }
+
+  /* Smart list tiles — keep 2 col but shrink padding */
+  .chronicle-tiles { gap: 6px; }
+  .chronicle-tile  { padding: 8px; }
+
+  /* Reminder form page — remove width cap */
+  .chronicle-form-wrap,
+  [class*="chronicle-form"] { max-width: 100% !important; }
+
+  /* Event modal — fit phone */
+  .modal:has(.chronicle-event-modal) {
+    width: 95vw !important;
+    max-width: 95vw;
+  }
+
+  /* Detail popup */
+  .cdp-modal {
+    min-width: 0;
+    max-width: 95vw;
+    width: 95vw;
+  }
+
+  /* Year view — 2 cols instead of 4 */
+  .chronicle-year-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Month mini cells tighter */
+  .chronicle-month-cell { min-height: 60px; }
+
+  /* Week/day time grid: hide minor gridlines to reduce visual density */
+  .chronicle-cal-hour-label { font-size: 10px; }
+
+  /* Context menu: bigger tap targets */
+  .chronicle-context-item { padding: 12px 14px; min-height: 44px; }
+
+  /* Checkboxes / row controls: enforce 44x44 tap target */
+  .chronicle-reminder-check,
+  .chronicle-reminder-row button,
+  .chronicle-cal-nav-btn { min-width: 44px; min-height: 44px; }
+}
+

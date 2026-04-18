@@ -1,4 +1,4 @@
-import { App } from "obsidian";
+import { App, Notice, Platform } from "obsidian";
 import { ReminderManager } from "./ReminderManager";
 import { EventManager } from "./EventManager";
 import { AlertOffset, ChronicleSettings } from "../types";
@@ -24,8 +24,8 @@ export class AlertManager {
   }
 
   start() {
-    // Request permission inline
-    if ("Notification" in window && Notification.permission === "default") {
+    // Request permission inline (desktop only — mobile has no Web Notification API)
+    if (Platform.isDesktop && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
 
@@ -126,16 +126,19 @@ export class AlertManager {
     const doSound   = settings.notifSound ?? true;
     const rawSound  = type === "event" ? (settings.notifSoundEvent ?? "Glass") : (settings.notifSoundReminder ?? "Glass");
 
-    // ── Web Notification (shows as "Obsidian" in macOS Notification Centre) ──
-    if (doNotif && Notification.permission === "granted") {
+    // ── Web Notification (desktop only — mobile has no Web Notification API) ──
+    if (doNotif && Platform.isDesktop && "Notification" in window && Notification.permission === "granted") {
       new Notification(`Chronicle — ${type === "event" ? "Event" : "Reminder"}`, {
         body:   `${title}\n${body}`,
-        silent: true,   // we control sound separately below
+        silent: true,
       });
+    } else if (doNotif && Platform.isMobile) {
+      // Mobile fallback: in-app Obsidian toast
+      new Notice(`Chronicle — ${type === "event" ? "Event" : "Reminder"}\n${title}\n${body}`, 8000);
     }
 
-    // ── Sound via afplay (macOS system sounds, independent of notification) ──
-    if (doSound && rawSound && rawSound !== "none") {
+    // ── Sound via afplay (macOS only; desktop-Node required) ──
+    if (doSound && rawSound && rawSound !== "none" && Platform.isDesktop && Platform.isMacOS) {
       try {
         const { exec } = (window as any).require("child_process");
         exec(`afplay "/System/Library/Sounds/${rawSound}.aiff"`);

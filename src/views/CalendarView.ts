@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf, Platform } from "obsidian";
 import { EventManager } from "../data/EventManager";
 import { ReminderManager } from "../data/ReminderManager";
 import { CalendarManager } from "../data/CalendarManager";
@@ -8,6 +8,7 @@ import { EventDetailPopup } from "../ui/EventDetailPopup";
 import { EventFormView, EVENT_FORM_VIEW_TYPE } from "./EventFormView";
 import type ChroniclePlugin from "../main";
 import { formatHour12, formatTime12 } from "../utils/formatters";
+import { bindContextMenu } from "../utils/touch";
 
 export const CALENDAR_VIEW_TYPE = "chronicle-calendar-view";
 type CalendarMode = "day" | "week" | "month" | "year";
@@ -94,7 +95,8 @@ export class CalendarView extends ItemView {
 
   async render() {
     if (!this._modeSet) {
-      this.mode     = this.plugin.settings.defaultCalendarView ?? "week";
+      // Mobile: week/month views too cramped on phone — force "day" on first open
+      this.mode     = Platform.isMobile ? "day" : (this.plugin.settings.defaultCalendarView ?? "week");
       this._modeSet = true;
     }
 
@@ -359,9 +361,8 @@ private getRangeStart(): string {
       cell.createDiv("chronicle-month-cell-num").setText(String(d));
 
       cell.addEventListener("dblclick", () => this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay));
-      cell.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay);
+      bindContextMenu(cell, (x, y) => {
+        this.showCalContextMenu(x, y, dateStr, this.plugin.settings.defaultAllDay);
       });
 
       const dayEvents   = events.filter(e => e.startDate === dateStr && this.isCalendarVisible(e.calendarId));
@@ -494,13 +495,12 @@ private getRangeStart(): string {
         this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
 
-      timeGrid.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
+      bindContextMenu(timeGrid, (cx, cy) => {
         const rect   = timeGrid.getBoundingClientRect();
-        const y      = e.clientY - rect.top;
+        const y      = cy - rect.top;
         const hour   = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
         const minute = Math.floor((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-        this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
+        this.showCalContextMenu(cx, cy, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
       });
 
       // Timed events
@@ -579,13 +579,12 @@ private getRangeStart(): string {
       this.openNewEventModal(dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
 
-    eventCol.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
+    bindContextMenu(eventCol, (cx, cy) => {
       const rect   = eventCol.getBoundingClientRect();
-      const y      = e.clientY - rect.top;
+      const y      = cy - rect.top;
       const hour   = Math.min(Math.floor(y / HOUR_HEIGHT), 23);
       const minute = Math.floor((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-      this.showCalContextMenu(e.clientX, e.clientY, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
+      this.showCalContextMenu(cx, cy, dateStr, this.plugin.settings.defaultAllDay, hour, minute);
     });
 
     events.filter(e => e.startDate === dateStr && !e.allDay && e.startTime && this.isCalendarVisible(e.calendarId))
@@ -690,10 +689,8 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
       new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open();
     });
 
-    pill.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.showEventContextMenu(e.clientX, e.clientY, event);
+    bindContextMenu(pill, (x, y) => {
+      this.showEventContextMenu(x, y, event);
     });
   }
 
@@ -709,10 +706,8 @@ private showEventContextMenu(x: number, y: number, event: ChronicleEvent) {
       new EventDetailPopup(this.app, event, this.calendarManager, this.reminderManager, this.plugin.settings.timeFormat, () => new EventModal(this.app, this.eventManager, this.calendarManager, this.reminderManager, event, () => this.render(), (ev) => this.openEventFullPage(ev)).open()).open()
     );
 
-    pill.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.showEventContextMenu(e.clientX, e.clientY, event);
+    bindContextMenu(pill, (x, y) => {
+      this.showEventContextMenu(x, y, event);
     });
   }
 
