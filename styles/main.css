@@ -2026,29 +2026,33 @@
 
 /* ── Mobile responsive (≤ 700px) ──────────────────────────────────────── */
 @media (max-width: 700px) {
-  /* Outer app: allow iOS keyboard to resize viewport; single scroll container
-     so sidebar scrolls off naturally instead of sticking */
+  /* Outer app: lock to dynamic viewport height so iOS keyboard shrinks it
+     instead of overflowing parent. Secondary bg + padding provides the
+     rounded-border look that frames the main pane (mirrors desktop). */
   .chronicle-app,
   .chronicle-cal-app {
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--background-secondary);
+    padding: 6px;
+    box-sizing: border-box;
   }
 
-  /* Stack sidebar above main in normal flow (no grid = no frozen rows) */
+  /* Layout owns the scroll — sidebar + main stack and scroll together */
   .chronicle-layout,
   .chronicle-cal-layout {
     display: flex;
     flex-direction: column;
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
-    padding: 8px;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
     gap: 8px;
-    background: var(--background-secondary);
+    background: transparent;
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* Sidebar = normal flow, not sticky, not height-capped — scrolls away */
+  /* Sidebar = normal flow block that scrolls away */
   .chronicle-sidebar,
   .chronicle-cal-sidebar {
     max-height: none;
@@ -2060,29 +2064,43 @@
     flex-shrink: 0;
   }
 
-  /* Main pane: rounded corners + primary bg (matches desktop look) */
+  /* Main pane: rounded corners + primary bg. min-height so it feels like
+     a full page once sidebar scrolls off. */
   .chronicle-main,
   .chronicle-cal-main {
     overflow: visible;
-    min-height: 100dvh;
+    min-height: 100%;
     border-radius: var(--radius-m);
     background: var(--background-primary);
+    flex-shrink: 0;
   }
 
   /* Smart list tiles — keep 2 col but shrink padding */
   .chronicle-tiles { gap: 6px; }
   .chronicle-tile  { padding: 8px; }
 
-  /* Full-page form: no outer overflow hidden (iOS keyboard blanks page otherwise) */
+  /* Full-page form: dvh + inner scroll so keyboard shrinks container */
   .chronicle-form-page {
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
+    height: 100dvh;
+    overflow: hidden;
   }
   .cf-form {
-    overflow: visible;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     max-width: 100% !important;
     padding: 16px;
+  }
+
+  /* Mini calendar: square cells (no horizontal stretch) */
+  .chronicle-mini-cal { max-width: 320px; margin: 0 auto; width: 100%; }
+  .chronicle-mini-day,
+  .chronicle-mini-day-name,
+  .chronicle-mini-day-empty {
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Reminder form page — remove width cap */
