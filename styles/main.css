@@ -2029,13 +2029,17 @@
   /* Outer app: lock to dynamic viewport height so iOS keyboard shrinks it
      instead of overflowing parent. Secondary bg + padding provides the
      rounded-border look that frames the main pane (mirrors desktop). */
+  /* 100svh = small viewport height. Stays FIXED when keyboard opens
+     (keyboard overlays content instead of pushing layout up). */
   .chronicle-app,
   .chronicle-cal-app {
-    height: 100dvh;
+    height: 100svh;
+    max-height: 100svh;
     overflow: hidden;
     background: var(--background-secondary);
-    padding: 6px;
+    padding: 8px;
     box-sizing: border-box;
+    border-radius: var(--radius-l);
   }
 
   /* Layout owns the scroll — sidebar + main stack and scroll together */
@@ -2081,7 +2085,8 @@
 
   /* Full-page form: dvh + inner scroll so keyboard shrinks container */
   .chronicle-form-page {
-    height: 100dvh;
+    height: 100svh;
+    max-height: 100svh;
     overflow: hidden;
   }
   .cf-form {
