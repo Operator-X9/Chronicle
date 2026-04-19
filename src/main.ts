@@ -11,6 +11,7 @@ import { ReminderView, REMINDER_VIEW_TYPE } from "./views/ReminderView";
 import { ReminderFormView, REMINDER_FORM_VIEW_TYPE } from "./views/ReminderFormView";
 import { CalendarView, CALENDAR_VIEW_TYPE } from "./views/CalendarView";
 import { EventModal } from "./ui/EventModal";
+import { installMobileKeyboardLock } from "./utils/mobileKeyboard";
 
 export default class ChroniclePlugin extends Plugin {
   settings: ChronicleSettings;
@@ -19,6 +20,7 @@ export default class ChroniclePlugin extends Plugin {
   reminderManager!: ReminderManager;
   eventManager: EventManager;
   alertManager: AlertManager;
+  private uninstallKbLock: () => void = () => {};
 
   async onload() {
     await this.loadSettings();
@@ -86,6 +88,10 @@ export default class ChroniclePlugin extends Plugin {
     });
 
     this.addSettingTab(new ChronicleSettingsTab(this.app, this));
+
+    // Mobile only: prevent iOS WebView from pushing content up when keyboard opens
+    this.uninstallKbLock = installMobileKeyboardLock();
+
     console.log("Chronicle loaded ✓");
   }
 
@@ -133,6 +139,7 @@ export default class ChroniclePlugin extends Plugin {
 
   onunload() {
     this.alertManager.stop();
+    this.uninstallKbLock();
     this.app.workspace.detachLeavesOfType(REMINDER_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);

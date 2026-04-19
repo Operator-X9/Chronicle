@@ -1149,7 +1149,7 @@ var EventFormView = class extends import_obsidian3.ItemView {
 };
 
 // src/main.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/data/ListManager.ts
 var ListManager = class {
@@ -3505,8 +3505,78 @@ var CalendarView = class extends import_obsidian12.ItemView {
   }
 };
 
+// src/utils/mobileKeyboard.ts
+var import_obsidian13 = require("obsidian");
+var CHRONICLE_CONTAINER_SEL = ".chronicle-app, .chronicle-cal-app, .chronicle-form-page";
+var INPUT_TAGS = /* @__PURE__ */ new Set(["INPUT", "TEXTAREA", "SELECT"]);
+var savedScrollY = 0;
+var locked = false;
+function isInChronicle(el) {
+  return !!(el && el.closest(CHRONICLE_CONTAINER_SEL));
+}
+function isEditable(el) {
+  if (!(el instanceof HTMLElement)) return false;
+  if (INPUT_TAGS.has(el.tagName)) return true;
+  if (el.isContentEditable) return true;
+  return false;
+}
+function lockBody() {
+  if (locked) return;
+  savedScrollY = window.scrollY;
+  const body = document.body;
+  body.style.position = "fixed";
+  body.style.top = `-${savedScrollY}px`;
+  body.style.left = "0";
+  body.style.right = "0";
+  body.style.width = "100%";
+  body.classList.add("chronicle-mobile-kb-lock");
+  locked = true;
+}
+function unlockBody() {
+  if (!locked) return;
+  const body = document.body;
+  body.style.position = "";
+  body.style.top = "";
+  body.style.left = "";
+  body.style.right = "";
+  body.style.width = "";
+  body.classList.remove("chronicle-mobile-kb-lock");
+  window.scrollTo(0, savedScrollY);
+  locked = false;
+}
+function installMobileKeyboardLock() {
+  if (!import_obsidian13.Platform.isMobile) return () => {
+  };
+  const onFocusIn = (e) => {
+    if (!isEditable(e.target)) return;
+    if (!isInChronicle(e.target)) return;
+    lockBody();
+  };
+  const onFocusOut = (e) => {
+    if (!isEditable(e.target)) return;
+    if (!isInChronicle(e.target)) return;
+    window.setTimeout(() => {
+      const active = document.activeElement;
+      if (isEditable(active) && isInChronicle(active)) return;
+      unlockBody();
+    }, 50);
+  };
+  document.addEventListener("focusin", onFocusIn);
+  document.addEventListener("focusout", onFocusOut);
+  return () => {
+    document.removeEventListener("focusin", onFocusIn);
+    document.removeEventListener("focusout", onFocusOut);
+    unlockBody();
+  };
+}
+
 // src/main.ts
-var ChroniclePlugin = class extends import_obsidian13.Plugin {
+var ChroniclePlugin = class extends import_obsidian14.Plugin {
+  constructor() {
+    super(...arguments);
+    this.uninstallKbLock = () => {
+    };
+  }
   async onload() {
     await this.loadSettings();
     this.calendarManager = new CalendarManager(
@@ -3567,6 +3637,7 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
       callback: () => this.openEventModal()
     });
     this.addSettingTab(new ChronicleSettingsTab(this.app, this));
+    this.uninstallKbLock = installMobileKeyboardLock();
     console.log("Chronicle loaded \u2713");
   }
   async activateReminderView() {
@@ -3609,6 +3680,7 @@ var ChroniclePlugin = class extends import_obsidian13.Plugin {
   }
   onunload() {
     this.alertManager.stop();
+    this.uninstallKbLock();
     this.app.workspace.detachLeavesOfType(REMINDER_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(REMINDER_FORM_VIEW_TYPE);
     this.app.workspace.detachLeavesOfType(CALENDAR_VIEW_TYPE);
