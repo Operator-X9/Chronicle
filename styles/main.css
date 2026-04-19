@@ -2026,30 +2026,64 @@
 
 /* ── Mobile responsive (≤ 700px) ──────────────────────────────────────── */
 @media (max-width: 700px) {
-  /* Reminder + Calendar layouts: stack sidebar above main */
+  /* Outer app: allow iOS keyboard to resize viewport; single scroll container
+     so sidebar scrolls off naturally instead of sticking */
+  .chronicle-app,
+  .chronicle-cal-app {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  /* Stack sidebar above main in normal flow (no grid = no frozen rows) */
   .chronicle-layout,
   .chronicle-cal-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding: 8px;
+    gap: 8px;
+    background: var(--background-secondary);
   }
 
+  /* Sidebar = normal flow, not sticky, not height-capped — scrolls away */
   .chronicle-sidebar,
   .chronicle-cal-sidebar {
-    max-height: 38vh;
-    padding: 10px 8px;
-    gap: 12px;
+    max-height: none;
+    overflow: visible;
+    padding: 12px;
+    gap: 14px;
+    background: var(--background-secondary);
     border-radius: var(--radius-m);
+    flex-shrink: 0;
   }
 
+  /* Main pane: rounded corners + primary bg (matches desktop look) */
   .chronicle-main,
   .chronicle-cal-main {
+    overflow: visible;
+    min-height: 100dvh;
     border-radius: var(--radius-m);
+    background: var(--background-primary);
   }
 
   /* Smart list tiles — keep 2 col but shrink padding */
   .chronicle-tiles { gap: 6px; }
   .chronicle-tile  { padding: 8px; }
+
+  /* Full-page form: no outer overflow hidden (iOS keyboard blanks page otherwise) */
+  .chronicle-form-page {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .cf-form {
+    overflow: visible;
+    max-width: 100% !important;
+    padding: 16px;
+  }
 
   /* Reminder form page — remove width cap */
   .chronicle-form-wrap,
